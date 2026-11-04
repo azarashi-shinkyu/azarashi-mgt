@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>あざらしMGT</title>
+<style>
+:root{
+  --blue:#5a8bd8; --blue-d:#2f5a9e; --blue-l:#edf3fc; --blue-m:#cfe0f7;
+  --ink:#1d2433; --sub:#667089; --line:#e3e7ef; --bg:#f5f7fb; --card:#fff;
+  --ok:#1f8a5b; --ok-l:#e3f4ec; --warn:#b4541a; --warn-l:#fbeee4; --sun:#c0392b; --sat:#2a64c4;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI",system-ui,sans-serif;font-size:15px;-webkit-text-size-adjust:100%}
+button{font:inherit;cursor:pointer}
+input,select{font:inherit}
+.hdr{background:var(--blue);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
+.hdr .logo{width:46px;height:35px;border-radius:9px;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none}
+.hdr .logo img{width:44px;height:auto;display:block}
+.hdr h1{font-size:19px;margin:0;letter-spacing:.04em;font-weight:700;white-space:nowrap}
+.hdr .me{margin-left:auto;text-align:right;font-size:12px;line-height:1.35}
+.hdr .me b{font-size:14px;display:block}
+.hdr .logout{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.5);color:#fff;margin-left:2px;padding:4px 8px;font-size:11px;white-space:nowrap}
+.role-pill{display:inline-block;background:rgba(255,255,255,.18);border-radius:99px;padding:1px 8px;margin-top:2px}
+.tabs{display:flex;gap:4px;background:#fff;border-bottom:1px solid var(--line);padding:0 10px;position:sticky;top:55px;z-index:19;overflow-x:auto}
+.tabs button{border:0;background:none;padding:12px 12px 10px;color:var(--sub);border-bottom:3px solid transparent;white-space:nowrap;font-weight:600}
+.tabs button.on{color:var(--blue);border-bottom-color:var(--blue)}
+main{max-width:980px;margin:0 auto;padding:16px 14px 110px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 12px;color:var(--blue-d);display:flex;align-items:center;gap:8px}
+.card h2 .n{background:var(--blue);color:#fff;border-radius:99px;width:22px;height:22px;display:grid;place-items:center;font-size:12px}
+.muted{color:var(--sub);font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--blue);background:#fff;color:var(--blue);border-radius:10px;padding:9px 14px;font-weight:600}
+.btn.pri{background:var(--blue);color:#fff}
+.btn.pri:disabled{background:#b9cdec;border-color:#b9cdec;cursor:default}
+.chip.add{border-style:dashed;border-color:var(--blue);color:var(--blue);background:var(--blue-l)}
+.btn.sm{padding:5px 10px;font-size:13px;border-radius:8px}
+.btn.ghost{border-color:var(--line);color:var(--sub)}
+.btn.danger{border-color:#e6b9b3;color:#b03a2e}
+.inp{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:#fff;min-width:0}
+.inp:focus{outline:2px solid var(--blue-m);border-color:var(--blue)}
+.datebar{display:flex;align-items:center;gap:10px}
+.datebar .d{font-size:22px;font-weight:700;color:var(--blue-d)}
+.datebar .w{font-size:15px;color:var(--sub)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--blue-m);background:#fff;color:var(--ink);border-radius:12px;padding:10px 14px;font-weight:600;position:relative;min-height:44px}
+.chip .cnt{display:inline-block;margin-left:6px;background:var(--blue);color:#fff;border-radius:99px;font-size:11px;padding:1px 7px}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.chip.on .cnt{background:#fff;color:var(--blue)}
+.chip.pt.on::before{content:"✓ "}
+.chip.fac.cur{outline:3px solid var(--blue-m)}
+.empty{padding:14px;border:1.5px dashed var(--line);border-radius:12px;color:var(--sub);text-align:center;font-size:14px}
+.sumlist{margin:0;padding:0;list-style:none}
+.sumlist li{display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14px}
+.sumlist li:last-child{border-bottom:0}
+.sumlist .f{color:var(--blue-d);font-weight:700;min-width:7em}
+.sendbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));z-index:30;display:flex;justify-content:center}
+.sendbar .in{max-width:980px;width:100%;display:flex;align-items:center;gap:12px}
+.sendbar .btn{flex:1;max-width:340px;margin-left:auto;padding:13px;font-size:16px}
+.badge{display:inline-block;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:700}
+.badge.ok{background:var(--ok-l);color:var(--ok)}
+.badge.warn{background:var(--warn-l);color:var(--warn)}
+.badge.info{background:var(--blue-l);color:var(--blue)}
+/* matrix */
+.mx-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff;max-height:70vh}
+table.mx{border-collapse:separate;border-spacing:0;font-size:12px;min-width:100%}
+.mx th,.mx td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);text-align:center;padding:0;height:30px;min-width:28px}
+.mx thead th{position:sticky;top:0;background:#f3f7fd;z-index:2;font-weight:600;line-height:1.1;padding:4px 0}
+.mx thead th small{display:block;font-weight:400;color:var(--sub);font-size:10px}
+.mx thead th.sun,.mx td.sun{background:#fdf1f0}.mx thead th.sun{color:var(--sun)}
+.mx thead th.sat,.mx td.sat{background:#eef3fc}.mx thead th.sat{color:var(--sat)}
+.mx .nm{position:sticky;left:0;background:#fff;z-index:1;text-align:left;padding:0 10px;min-width:120px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.mx thead .nm{z-index:3;background:#f3f7fd}
+.mx tr.grp td{background:var(--blue-l);color:var(--blue-d);font-weight:700;text-align:left;padding:0;height:26px}
+.mx tr.grp td span{position:sticky;left:0;display:inline-block;padding:0 10px;background:var(--blue-l);white-space:nowrap}
+.mx td.hit{color:var(--blue);font-weight:800;font-size:14px}
+.mx td.hit.multi{font-size:12px}
+.mx .tot{background:#f7f9fc;font-weight:700;min-width:40px}
+.mx tfoot td{background:#f0f3f9;font-weight:700;position:sticky;bottom:0}
+.mx tfoot .nm{background:#f0f3f9}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat .k{font-size:12px;color:var(--sub)}
+.stat .v{font-size:clamp(17px,5vw,24px);white-space:nowrap;font-weight:800;color:var(--blue-d)}
+.stat .v small{font-size:13px;font-weight:600;margin-left:2px}
+.confirm{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px;border-radius:12px;background:var(--blue-l);margin-bottom:12px}
+.list{list-style:none;margin:0;padding:0}
+.list li{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}
+.list .grow{flex:1;min-width:0}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;opacity:0;transition:.25s;z-index:50;font-size:14px;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.banner{background:var(--warn-l);color:var(--warn);padding:9px 14px;font-size:13px;text-align:center}
+.center{min-height:60vh;display:grid;place-items:center;text-align:center}
+.onb{max-width:420px;width:100%}
+.onb img{width:120px;margin:0 auto 6px;display:block}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.seg button{flex:1;border:0;background:#fff;padding:12px;font-weight:700;color:var(--sub)}
+.seg button.on{background:var(--blue);color:#fff}
+label.f{display:block;font-size:13px;color:var(--sub);margin:12px 0 6px;text-align:left}
+.modal-bg{position:fixed;inset:0;background:rgba(20,30,50,.45);display:grid;place-items:center;z-index:60;padding:16px}
+.modal{background:#fff;border-radius:16px;padding:18px;max-width:420px;width:100%}
+.modal h3{margin:0 0 10px;font-size:16px}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.legend{font-size:12px;color:var(--sub);margin-top:8px}
+table.rc,table.pl{border-collapse:collapse;width:100%;font-size:13px}
+table.rc th,table.rc td,table.pl th,table.pl td{border-bottom:1px solid var(--line);padding:8px 8px;text-align:right;white-space:nowrap}
+table.rc th,table.pl th{background:#f3f7fd;color:var(--blue-d);font-weight:700;font-size:12px;text-align:center}
+table.rc td:nth-child(2){text-align:center}
+table.pl td.lb,table.pl th.lb{text-align:left;position:sticky;left:0;background:#fff;min-width:130px}
+table.pl th.lb{background:#f3f7fd}
+table.pl td.sum,table.pl th.sum{background:#f7f9fc;font-weight:700}
+table.pl tr.sec td{background:var(--blue-l);color:var(--blue-d);font-weight:700;text-align:left;font-size:12px}
+table.pl tr.strong td{font-weight:800}
+table.pl tr.profit td{color:var(--blue-d);font-size:14px}
+.plin{width:100px;text-align:right;padding:5px 8px}
+.inp.fee{width:110px;text-align:right}
+.inp.w{width:100%}
+label.ck{display:flex;align-items:center;gap:8px;margin:10px 0;font-size:14px}
+label.ck input{width:18px;height:18px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.fh{margin:18px 0 0;font-size:13px;color:var(--blue-d);border-top:1px solid var(--line);padding-top:12px}
+@media (max-width:560px){.fgrid{grid-template-columns:1fr}}
+@media (max-width:560px){.hdr h1{font-size:17px}.datebar .d{font-size:19px}}
+</style>
+</head>
+<body>
+<div id="app"><div class="center"><div class="muted">読み込み中…</div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const LOGO = "data:image/jpeg;base64,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";
+const HOME_ID = "home";
+const HOME_NAME = "居宅";
+const WD = ["日","月","火","水","木","金","土"];
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const ym = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+const parseYmd = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const jpDate = s => { const d = parseYmd(s); return `${d.getMonth()+1}月${d.getDate()}日`; };
+const jpMonth = s => { const [y,m] = s.split("-"); return `${y}年${Number(m)}月`; };
+const addMonth = (s, n) => { const [y,m] = s.split("-").map(Number); return ym(new Date(y, m-1+n, 1)); };
+const daysIn = s => { const [y,m] = s.split("-").map(Number); return new Date(y, m, 0).getDate(); };
+const hhmm = iso => { if(!iso) return ""; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const rid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove("show"),2600); }
+
+/* ---------- local fallback store (for preview without sharing) ---------- */
+function makeLocalDB(){
+  const docs = new Map(); const subs = new Set();
+  const snapDoc = (path) => { const v = docs.get(path); return { id: path.split("/").pop(), exists: !!v, data: () => v ? JSON.parse(JSON.stringify(v)) : undefined, metadata:{fromCache:false,hasPendingWrites:false} }; };
+  const notify = () => subs.forEach(f => f());
+  function query(cpath, filters){
+    const run = () => { const out=[]; for(const [p] of docs){ const segs=p.split("/"); if(segs.slice(0,-1).join("/")!==cpath) continue; const s=snapDoc(p); const d=s.data(); if(filters.every(([f,op,v]) => op==="=="? d[f]===v : true)) out.push(s);} out.sort((a,b)=>a.id<b.id?-1:1); return {docs:out,size:out.length,empty:!out.length,metadata:{fromCache:false,hasPendingWrites:false},docChanges:()=>[]}; };
+    return {
+      where:(f,op,v)=>query(cpath,[...filters,[f,op,v]]),
+      orderBy(){return this}, limit(){return this},
+      get: async()=>run(),
+      onSnapshot(next){ const f=()=>next(run()); subs.add(f); setTimeout(f,0); return ()=>subs.delete(f); }
+    };
+  }
+  function docRef(path){ return {
+    id:path.split("/").pop(), path,
+    get: async()=>snapDoc(path),
+    set: async(d)=>{ docs.set(path, JSON.parse(JSON.stringify(d))); notify(); },
+    update: async(d)=>{ docs.set(path, {...(docs.get(path)||{}), ...JSON.parse(JSON.stringify(d))}); notify(); },
+    delete: async()=>{ docs.delete(path); notify(); },
+    onSnapshot(next){ const f=()=>next(snapDoc(path)); subs.add(f); setTimeout(f,0); return ()=>subs.delete(f); }
+  };}
+  return {
+    doc: docRef,
+    collection: (cpath) => Object.assign(query(cpath,[]), { path:cpath, doc:(id)=>docRef(cpath+"/"+(id||rid())), add: async(d)=>{ const r=docRef(cpath+"/"+rid()); await r.set(d); return r; } })
+  };
+}
+
+/* ---------- state ---------- */
+const S = {
+  db:null, local:false, uid:null, readOnly:false,
+  members:{}, facilities:{}, patients:{},
+  me:null,             // member doc
+  tab:null,
+  // daily
+  date: ymd(new Date()), curFac: null, sel: new Set(), loadedReport:null, dirty:false,
+  // monthly
+  month: ym(new Date()), monthStaff: null, monthReports: [], monthConfirms:{}, monthUnsub:null, confUnsub:null,
+  // patients tab
+  ptFac: HOME_ID,
+  stores:{}, fees:null, receipts:{}, pl:{}, rcStore:'all', setTab:'stores',
+  loaded:{members:false,facilities:false,patients:false},
+};
+const isAdminId = id => (id===S.uid && S.isOwner) || (S.admins||[]).includes(id);
+const isAdmin = () => isAdminId(S.uid);
+const facName = id => id===HOME_ID ? HOME_NAME : (S.facilities[id]?.name || "（削除された施設）");
+const facList = () => [{id:HOME_ID,name:HOME_NAME,order:-1}, ...Object.entries(S.facilities).map(([id,f])=>({id,...f}))
+  .sort((a,b)=>(a.order??0)-(b.order??0) || a.name.localeCompare(b.name,"ja"))].filter((f,i)=>i===0||f.id!==HOME_ID);
+const patientsOf = fid => Object.entries(S.patients).map(([id,p])=>({id,...p})).filter(p=>p.facilityId===fid && p.active!==false)
+  .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,"ja"));
+const staffList = () => Object.entries(S.members).map(([id,m])=>({id,...m})).filter(m=>!isAdminId(m.id)).sort((a,b)=>a.name.localeCompare(b.name,"ja"));
+
+async function safeWrite(fn, okMsg){
+  try { await fn(); if(okMsg) toast(okMsg); return true; }
+  catch(e){
+    console.error(e);
+    if(e?.code==="invalid_argument"){ S.readOnly=true; toast("保存できませんでした。この操作をする権限がありません。"); }
+    else if(e?.code==="quota_exceeded"){ toast("保存容量の上限に達しました。"); }
+    else if(e?.code==="unavailable"){ toast("通信が不安定です。少し待ってからもう一度お試しください。"); }
+    else toast("保存できませんでした（"+(e?.code||"エラー")+"）");
+    render(); return false;
+  }
+}
+
+/* ---------- boot (Firebase) ---------- */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBef8DiGo5EVXDjVcmApuVU053Z15VIrsw",
+  authDomain: "azarashi-mgt.firebaseapp.com",
+  projectId: "azarashi-mgt",
+  storageBucket: "azarashi-mgt.firebasestorage.app",
+  messagingSenderId: "376277274309",
+  appId: "1:376277274309:web:217c0392cc88bb29a5eaac"
+};
+const OWNER_EMAIL = "ishiishi6492@gmail.com";
+const FB_VER = "10.12.2";
+const FB = {};
+function mapErr(e){ const c=e?.code||""; return {code: c==="permission-denied"?"invalid_argument" : c==="unavailable"||c==="deadline-exceeded"?"unavailable" : c==="resource-exhausted"?"quota_exceeded" : c||"error", message:e?.message||String(e)}; }
+function wrapFirestore(fs, m){
+  const snapDoc = s => ({id:s.id, exists:s.exists(), data:()=>s.data(), metadata:s.metadata});
+  const snapQ = q => ({docs:q.docs.map(snapDoc), size:q.size, empty:q.empty, metadata:q.metadata, docChanges:()=>[]});
+  const wrapP = p => p.catch(e=>{ throw mapErr(e); });
+  function docRef(path){ const r=m.doc(fs,path); return {
+    id:r.id, path,
+    get: ()=>wrapP(m.getDoc(r).then(snapDoc)),
+    set: d=>wrapP(m.setDoc(r,d)), update: d=>wrapP(m.updateDoc(r,d)), delete: ()=>wrapP(m.deleteDoc(r)),
+    onSnapshot:(n,e)=>m.onSnapshot(r, s=>n(snapDoc(s)), err=>{ console.error(err); e&&e(mapErr(err)); })
+  };}
+  function query(path, cons){ const base=m.collection(fs,path); const build=()=>cons.length?m.query(base,...cons):base; return {
+    where:(f,op,v)=>query(path,[...cons,m.where(f,op,v)]),
+    orderBy:(f,d)=>query(path,[...cons,m.orderBy(f,d)]),
+    limit:n=>query(path,[...cons,m.limit(n)]),
+    get: ()=>wrapP(m.getDocs(build()).then(snapQ)),
+    onSnapshot:(n,e)=>m.onSnapshot(build(), s=>n(snapQ(s)), err=>{ console.error(err); e&&e(mapErr(err)); })
+  };}
+  return { doc:docRef, collection:p=>Object.assign(query(p,[]),{path:p, doc:id=>docRef(p+"/"+(id||rid())), add:async d=>{ const r=docRef(p+"/"+rid()); await r.set(d); return r; }}) };
+}
+const DEMO = /[?&#]demo\b/.test(location.href) || location.protocol==="file:";
+(async function boot(){
+  if(DEMO){ S.db=makeLocalDB(); S.local=true; S.uid="local-user"; S.authUser={email:OWNER_EMAIL}; S.authReady=true; await afterLogin(); return; }
+  try{
+    const base=`https://www.gstatic.com/firebasejs/${FB_VER}/`;
+    const [appM, authM, fsM] = await Promise.all([import(base+"firebase-app.js"), import(base+"firebase-auth.js"), import(base+"firebase-firestore.js")]);
+    Object.assign(FB,{appM,authM,fsM});
+    FB.app = appM.initializeApp(FIREBASE_CONFIG);
+    FB.auth = authM.getAuth(FB.app);
+    FB.fs = fsM.initializeFirestore(FB.app, {ignoreUndefinedProperties:true});
+    S.db = wrapFirestore(FB.fs, fsM);
+    authM.onAuthStateChanged(FB.auth, async u=>{
+      S.authReady=true;
+      if(!u){ resetSession(); S.authUser=null; render(); return; }
+      S.authUser=u; S.uid=u.uid; await afterLogin();
+    });
+  }catch(e){ console.error(e); S.loadError="fb"; render(); }
+})();
+function resetSession(){
+  (S._unsubs||[]).forEach(f=>{ try{f()}catch(e){} }); S._unsubs=[];
+  S.monthUnsub?.(); S.confUnsub?.(); S.rcUnsub?.(); S.plUnsub?.();
+  Object.assign(S,{uid:null, me:null, members:{}, facilities:{}, patients:{}, stores:{}, sales:{}, isOwner:false, admins:[], roles:null, _subMonth:null, _salesSub:false, _adminSubs:false, notMember:false, needOwnerSetup:false, tab:null,
+    loaded:{members:false,facilities:false,patients:false}});
+}
+const track = u => { (S._unsubs=S._unsubs||[]).push(u); return u; };
+async function afterLogin(){
+  // 1) roles
+  let roles=null;
+  try{ const r=await S.db.doc("config/roles").get(); roles = r.exists ? r.data() : null; }
+  catch(e){ console.error(e); S.loadError=e?.code||"error"; render(); return; }
+  const email=(S.authUser?.email||"").toLowerCase();
+  if(!roles && email===OWNER_EMAIL){ S.needOwnerSetup=true; render(); return; }
+  S.roles=roles||{}; S.isOwner = S.local ? true : (roles?.owner===S.uid); S.admins=roles?.admins||[];
+  // 2) membership
+  let me=null;
+  try{ const m=await S.db.collection("members").doc(S.uid).get(); me = m.exists ? m.data() : null; }
+  catch(e){ console.error(e); S.loadError=e?.code||"error"; render(); return; }
+  if(!me && (S.local || roles?.owner===S.uid)){ S.needOwnerSetup=true; render(); return; }
+  if(!me || me.active===false){ S.notMember=true; render(); return; }
+  startData();
+}
+function startData(){
+  const timer = setTimeout(()=>{ if(!allLoaded()){ S.loadTimeout=true; render(); } }, 12000);
+  const done = k => { S.loaded[k]=true; if(allLoaded()) clearTimeout(timer); };
+  const onErr = e => { console.error(e); S.loadError=e?.code||"error"; clearTimeout(timer); render(); };
+  track(S.db.doc("config/roles").onSnapshot(snap=>{ const r=snap.exists?snap.data():{}; const was=isAdmin(); S.roles=r; S.isOwner = S.local?true:(r.owner===S.uid); S.admins=r.admins||[]; if(was!==isAdmin()){ S._subMonth=null; S.tab=null; } render(); }, e=>console.error(e)));
+  track(S.db.collection("members").onSnapshot(snap=>{
+    const m={}; snap.docs.forEach(d=>m[d.id]=d.data()); S.members=m; S.me=m[S.uid]||null; done("members");
+    if(S.me && S.me.active===false){ S.notMember=true; }
+    render();
+  }, onErr));
+  track(S.db.collection("facilities").onSnapshot(snap=>{ const m={}; snap.docs.forEach(d=>m[d.id]=d.data()); S.facilities=m; done("facilities"); render(); }, onErr));
+  track(S.db.collection("patients").onSnapshot(snap=>{ const m={}; snap.docs.forEach(d=>m[d.id]=d.data()); S.patients=m; done("patients"); render(); }, onErr));
+}
+function startAdminData(){
+  if(S._adminSubs || !isAdmin()) return; S._adminSubs=true;
+  track(S.db.collection("stores").onSnapshot(snap=>{ const m={}; snap.docs.forEach(d=>m[d.id]=d.data()); S.stores=m; render(); }, e=>console.error(e)));
+  track(S.db.doc("settings/fees").onSnapshot(snap=>{ S.fees = snap.exists ? snap.data() : null; render(); }, e=>console.error(e)));
+}
+const allLoaded = () => S.loaded.members && S.loaded.facilities && S.loaded.patients;
+
+/* ---------- monthly subscription (re-subscribe only when month changes) ---------- */
+function subscribeMonth(){
+  if(S._subMonth===S.month) return;
+  S._subMonth = S.month;
+  S.monthUnsub?.(); S.confUnsub?.(); S.rcUnsub?.(); S.plUnsub?.();
+  S.receipts={}; S.pl={};
+  if(isAdmin()){
+    S.rcUnsub = S.db.collection("receipts").where("month","==",S.month).onSnapshot(snap=>{ const m={}; snap.docs.forEach(d=>m[d.id]=d.data()); S.receipts=m; render(); }, e=>console.error(e));
+    S.plUnsub = S.db.collection("pl").where("month","==",S.month).onSnapshot(snap=>{ const m={}; snap.docs.forEach(d=>m[d.id]=d.data()); S.pl=m; render(); }, e=>console.error(e));
+  }
+  S.monthReports=[]; S.monthConfirms={}; S.monthLoaded=false;
+  const scope = q => isAdmin() ? q : q.where("staffId","==",S.uid);
+  S.monthUnsub = scope(S.db.collection("reports").where("month","==",S.month)).onSnapshot(snap=>{
+    S.monthReports = snap.docs.map(d=>({id:d.id,...d.data()})); S.monthLoaded=true; render();
+  }, e=>{ console.error(e); S.monthLoaded=true; render(); });
+  S.confUnsub = scope(S.db.collection("confirms").where("month","==",S.month)).onSnapshot(snap=>{
+    const m={}; snap.docs.forEach(d=>{ const v=d.data(); m[v.staffId]=v; }); S.monthConfirms=m; render();
+  }, e=>console.error(e));
+}
+
+/* ---------- daily report loading ---------- */
+async function loadDay(){
+  S.loadedReport=null; S.sel=new Set(); S.dirty=false;
+  const key = `${S.uid}_${S.date}`;
+  const want = S.date;
+  try{
+    const snap = await S.db.collection("reports").doc(key).get();
+    if(want!==S.date) return;
+    if(snap.exists){ const r=snap.data(); S.loadedReport=r; (r.items||[]).forEach(it=>S.sel.add(it.patientId)); }
+  }catch(e){ console.error(e); }
+  render();
+}
+
+/* ---------- render ---------- */
+function render(){
+  const app = $("#app");
+  if(!S.authReady){ app.innerHTML = shell(`<div class="center"><div class="muted">読み込み中…</div></div>`); return; }
+  if(!S.authUser){ app.innerHTML = loginView(); return; }
+  if(S.needOwnerSetup){ app.innerHTML = onboarding(); bindOnboarding(); return; }
+  if(S.notMember){ app.innerHTML = shell(`<div class="center"><div class="onb card"><h2 style="justify-content:center">このアカウントは使えません</h2><p class="muted">本部でアカウントが登録されていないか、停止されています。本部にご確認ください。</p><button class="btn" data-logout="1" style="margin-top:10px">ログアウト</button></div></div>`); return; }
+  if(S.loadError){ app.innerHTML = shell(`<div class="center"><div><p>データを読み込めませんでした。</p><p class="muted">通信状況を確認して、ページを開き直してください。続く場合は本部に連絡してください。</p><button class="btn" data-logout="1">ログアウト</button></div></div>`); return; }
+  if(!allLoaded()){ app.innerHTML = shell(`<div class="center"><div class="muted">${S.loadTimeout?"データに接続できません。通信状況を確認してください。":"読み込み中…"}</div></div>`); return; }
+  if(!S.me){ app.innerHTML = shell(`<div class="center"><div class="muted">読み込み中…</div></div>`); return; }
+  startAdminData();
+
+  const tabs = isAdmin()
+    ? [["collect","報告回収"],["month","月間確認"],["receipt","レセプト"],["pl","売上・PL"],["sales","営業"],["patients","施設・患者"],["settings","設定"]]
+    : [["daily","日報"],["month","月間確認"],["patients","施設・患者"]];
+  if(!S.tab || !tabs.some(t=>t[0]===S.tab)) S.tab = tabs[0][0];
+  if(S.tab==="daily" && S._dayKey !== S.date){ S._dayKey=S.date; loadDay(); }
+  if(["month","reports","collect","receipt","pl","sales"].includes(S.tab)) subscribeMonth();
+
+  let body="";
+  if(S.tab==="daily") body = dailyView();
+  else if(S.tab==="month") body = monthView();
+  else if(S.tab==="reports") body = reportsView();
+  else if(S.tab==="patients") body = patientsView();
+  else if(S.tab==="members") body = membersView();
+  else if(S.tab==="collect") body = collectView();
+  else if(S.tab==="receipt") body = receiptView();
+  else if(S.tab==="pl") body = plView();
+  else if(S.tab==="settings") body = settingsView();
+  else if(S.tab==="sales"){ subscribeSales(); body = salesView(); }
+
+  const keep = {}; document.querySelectorAll("input[id]").forEach(i=>keep[i.id]=i.value);
+  const focusId = document.activeElement?.id;
+  const scrollY = window.scrollY;
+  const mx = document.querySelector(".mx-wrap"); const mxs = mx ? [mx.scrollLeft, mx.scrollTop] : null;
+  app.innerHTML = shell(`
+    <nav class="tabs">${tabs.map(([k,l])=>`<button data-tab="${k}" class="${S.tab===k?"on":""}">${l}</button>`).join("")}</nav>
+    <main>${body}</main>
+    ${S.tab==="daily"?sendBar():""}`);
+  const mx2 = document.querySelector(".mx-wrap"); if(mx2 && mxs){ mx2.scrollLeft=mxs[0]; mx2.scrollTop=mxs[1]; }
+  for(const [id,v] of Object.entries(keep)){ const i=document.getElementById(id); if(i && !S._clear?.has(id)) i.value=v; }
+  S._clear=null;
+  if(focusId){ const f=document.getElementById(focusId); if(f && f.tagName==="INPUT") f.focus(); }
+  window.scrollTo(0, scrollY);
+}
+
+function shell(inner){
+  const me = S.me;
+  return `${S.local?`<div class="banner">デモモード：入力内容は保存されず、閉じると消えます。</div>`:""}
+  <header class="hdr">
+    <div class="logo"><img src="${LOGO}" alt=""></div>
+    <h1>あざらしMGT</h1>
+    ${me?`<div class="me"><b>${esc(me.name)}</b><span class="role-pill">${S.isOwner?"オーナー":isAdmin()?"管理者":"施術者"}</span></div><button class="btn sm logout" data-logout="1" title="ログアウト">ログアウト</button>`:""}
+  </header>${inner}`;
+}
+
+/* ----- login ----- */
+function loginView(){
+  return shell(`<div class="center"><form class="onb card" id="loginForm" autocomplete="on">
+    <img src="${LOGO}" alt="あざらしMGT">
+    <h2 style="justify-content:center">ログイン</h2>
+    <label class="f" for="lgEmail">メールアドレス</label>
+    <input class="inp" id="lgEmail" name="email" type="email" autocomplete="username" inputmode="email" style="width:100%" required>
+    <label class="f" for="lgPass">パスワード</label>
+    <input class="inp" id="lgPass" name="password" type="password" autocomplete="current-password" style="width:100%" required>
+    <div id="lgErr" class="muted" style="color:#b03a2e;min-height:18px;margin-top:8px;font-size:13px">${esc(S._lgErr||"")}</div>
+    <button class="btn pri" type="submit" style="width:100%;margin-top:6px;padding:13px">ログイン</button>
+    <button class="btn ghost sm" type="button" data-forgot="1" style="margin-top:12px">パスワードを忘れた場合</button>
+    <p class="muted" style="font-size:11px;margin-top:14px">アカウントは本部が発行します。iPhoneではパスワードを保存すると、次回からFace IDで入力できます。</p>
+  </form></div>`);
+}
+document.addEventListener("submit", async e=>{
+  if(e.target.id!=="loginForm") return;
+  e.preventDefault();
+  const email=$("#lgEmail").value.trim(), pass=$("#lgPass").value;
+  const btn=e.target.querySelector("button[type=submit]"); btn.disabled=true; btn.textContent="確認中…";
+  try{ await FB.authM.signInWithEmailAndPassword(FB.auth, email, pass); S._lgErr=""; }
+  catch(err){
+    const c=err?.code||"";
+    S._lgErr = /invalid-credential|wrong-password|user-not-found|invalid-email/.test(c) ? "メールアドレスかパスワードが違います" : /too-many-requests/.test(c) ? "何度も失敗したため一時的にロックされています。しばらく待ってからお試しください" : "ログインできませんでした（"+c+"）";
+    render(); setTimeout(()=>{ const i=$("#lgEmail"); if(i) i.value=email; },0);
+  }
+});
+async function forgotPassword(){
+  const email = await modal({title:"パスワードの再設定", body:"登録しているメールアドレスを入力してください。再設定用のメールを送ります。", input:$("#lgEmail")?.value||"", ok:"送信"});
+  if(!email) return;
+  try{ await FB.authM.sendPasswordResetEmail(FB.auth, email); toast("再設定用のメールを送りました"); }
+  catch(e){ toast("送信できませんでした（"+(e?.code||"エラー")+"）"); }
+}
+async function logout(){
+  if(S.local){ toast("デモモードではログアウトできません"); return; }
+  const ok=await modal({title:"ログアウトしますか？", ok:"ログアウト"}); if(!ok) return;
+  resetSession(); await FB.authM.signOut(FB.auth);
+}
+
+/* ----- owner first setup ----- */
+function onboarding(){
+  return shell(`<div class="center"><div class="onb card">
+    <img src="${LOGO}" alt="あざらしMGT">
+    <h2 style="justify-content:center">オーナーの初期設定</h2>
+    <p class="muted" style="margin-top:0">最初の1回だけです。このアカウントがオーナー（本部）になります。</p>
+    <label class="f">お名前</label>
+    <input class="inp" id="obName" style="width:100%" placeholder="例：石井 淳一" value="${esc(S._obName||"")}">
+    <button class="btn pri" id="obGo" style="width:100%;margin-top:18px;padding:13px">はじめる</button>
+  </div></div>`);
+}
+function bindOnboarding(){
+  $("#obName").addEventListener("input", e=>S._obName=e.target.value);
+}
+
+/* ----- daily ----- */
+function dailyView(){
+  const d = parseYmd(S.date);
+  const today = ymd(new Date());
+  const facs = facList();
+  if(!S.curFac || !facs.some(f=>f.id===S.curFac)) S.curFac = facs[0].id;
+  const selByFac = {};
+  for(const pid of S.sel){ const p=S.patients[pid]; const fid=p?.facilityId ?? (S.loadedReport?.items||[]).find(i=>i.patientId===pid)?.facilityId; (selByFac[fid]=selByFac[fid]||[]).push(pid); }
+  const pts = patientsOf(S.curFac);
+  const status = S.loadedReport
+    ? `<span class="badge ok">報告済み ${hhmm(S.loadedReport.submittedAt)}</span>${S.dirty?` <span class="badge warn">変更あり・未報告</span>`:""}`
+    : (S.sel.size?`<span class="badge warn">未報告</span>`:`<span class="badge info">未入力</span>`);
+  const ptName = pid => S.patients[pid]?.name || (S.loadedReport?.items||[]).find(i=>i.patientId===pid)?.patientName || "?";
+
+  return `
+  <section class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="datebar">
+        <button class="btn sm ghost" data-day="-1" aria-label="前の日">◀</button>
+        <div><span class="d">${d.getMonth()+1}月${d.getDate()}日</span> <span class="w">(${WD[d.getDay()]})</span></div>
+        <button class="btn sm ghost" data-day="1" aria-label="次の日" ${S.date>=today?"disabled":""}>▶</button>
+      </div>
+      <div>${status}</div>
+    </div>
+    ${S.date!==today?`<div class="row" style="margin-top:8px"><span class="muted">過去の日付を表示中</span><button class="btn sm" data-day="today">今日に戻る</button></div>`:""}
+  </section>
+
+  <section class="card">
+    <h2><span class="n">1</span>施設を選ぶ</h2>
+    <div class="chips">
+      ${facs.map(f=>`<button class="chip fac ${S.curFac===f.id?"on":""}" data-fac="${f.id}">${esc(f.name)}${selByFac[f.id]?.length?`<span class="cnt">${selByFac[f.id].length}</span>`:""}</button>`).join("")}
+      <button class="chip add" data-newfac="daily">＋ 施設を登録</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="n">2</span>${esc(facName(S.curFac))} の患者を選ぶ</h2><div class="muted" style="margin:-6px 0 10px">複数選択できます</div>
+    ${pts.length ? `<div class="chips">${pts.map(p=>`<button class="chip pt ${S.sel.has(p.id)?"on":""}" data-pt="${p.id}">${esc(p.name)}</button>`).join("")}</div>
+      <div class="row" style="margin-top:12px"><button class="btn sm ghost" data-allfac="${S.curFac}">この施設を全員選択</button><button class="btn sm ghost" data-clearfac="${S.curFac}">この施設の選択を外す</button></div>`
+      : `<div class="empty">この施設には患者が登録されていません。<br><button class="btn sm" style="margin-top:8px" data-goto-patients="${S.curFac}">患者を登録する</button></div>`}
+  </section>
+
+  <section class="card">
+    <h2><span class="n">3</span>本日の施術（${S.sel.size}名）</h2>
+    ${S.sel.size ? `<ul class="sumlist">${Object.entries(selByFac).map(([fid,ids])=>`<li><span class="f">${esc(facName(fid))}</span><span>${ids.map(ptName).map(esc).join("、")}</span></li>`).join("")}</ul>`
+      : `<div class="muted">まだ選択されていません。</div>`}
+  </section>`;
+}
+function sendBar(){
+  const can = S.sel.size>0 && (!S.loadedReport || S.dirty) && !S.sending;
+  const label = S.loadedReport ? (S.dirty?"修正して再報告する":"報告済み") : "報告する";
+  const clearBtn = S.loadedReport && !S.dirty ? `<button class="btn sm danger" id="cancelReport">この日の報告を取り消す</button>` : `<span class="muted">${S.sel.size}名 選択中</span>`;
+  return `<div class="sendbar"><div class="in">${clearBtn}<button class="btn pri" id="send" ${can?"":"disabled"}>${S.sending?"送信中…":label}</button></div></div>`;
+}
+async function sendReport(){
+  if(!S.sel.size) return;
+  S.sending=true; render();
+  const items = [...S.sel].map(pid=>{ const p=S.patients[pid]; const old=(S.loadedReport?.items||[]).find(i=>i.patientId===pid);
+    const fid=p?.facilityId ?? old?.facilityId; return {patientId:pid, patientName:p?.name ?? old?.patientName ?? "", facilityId:fid, facilityName:facName(fid)}; });
+  const doc = { staffId:S.uid, staffName:S.me.name, date:S.date, month:S.date.slice(0,7), items, submittedAt:new Date().toISOString() };
+  const ok = await safeWrite(()=>S.db.collection("reports").doc(`${S.uid}_${S.date}`).set(doc));
+  S.sending=false;
+  if(ok){ S.loadedReport=doc; S.dirty=false; toast(`${jpDate(S.date)}の日報を報告しました（${items.length}名）`); }
+  render();
+}
+
+/* ----- monthly ----- */
+function monthData(staffId){
+  // returns {rows:[{fid, fname, pid, pname, days:{d:count|names}}], dayTotals, total}
+  const reps = S.monthReports.filter(r=> staffId==="all" ? true : r.staffId===staffId);
+  const rows = new Map(); const dayTotals = {}; let total=0; const workDays=new Set();
+  for(const r of reps){
+    const day = Number(r.date.slice(8,10));
+    if((r.items||[]).length) workDays.add(r.staffId+"_"+day);
+    for(const it of (r.items||[])){
+      const key = it.patientId;
+      if(!rows.has(key)){
+        const p=S.patients[it.patientId]; const fid=p?.facilityId ?? it.facilityId;
+        rows.set(key,{pid:key, pname:p?.name ?? it.patientName ?? "?", fid, fname:facName(fid) || it.facilityName, days:{}});
+      }
+      const row=rows.get(key); (row.days[day]=row.days[day]||[]).push(r.staffId);
+      dayTotals[day]=(dayTotals[day]||0)+1; total++;
+    }
+  }
+  const order = Object.fromEntries(facList().map((f,i)=>[f.id,i]));
+  const list=[...rows.values()].sort((a,b)=>((order[a.fid]??999)-(order[b.fid]??999)) || a.fname.localeCompare(b.fname,"ja") || a.pname.localeCompare(b.pname,"ja"));
+  return {rows:list, dayTotals, total, reps, workDays:workDays.size};
+}
+function monthView(){
+  const staff = staffList();
+  let sid;
+  if(isAdmin()){
+    if(!S.monthStaff || (S.monthStaff!=="all" && !S.members[S.monthStaff])) S.monthStaff = staff[0]?.id || "all";
+    sid = S.monthStaff;
+  } else sid = S.uid;
+  const md = monthData(sid);
+  const nd = daysIn(S.month); const [y,m]=S.month.split("-").map(Number);
+  const dows = Array.from({length:nd},(_,i)=>new Date(y,m-1,i+1).getDay());
+  const showNames = sid==="all";
+  const initials = id => (S.members[id]?.name||"?").slice(0,1);
+
+  let tbody=""; let lastF=null;
+  for(const r of md.rows){
+    if(r.fid!==lastF){ tbody += `<tr class="grp"><td colspan="${nd+2}"><span>${esc(r.fname)}</span></td></tr>`; lastF=r.fid; }
+    let cnt=0;
+    tbody += `<tr><td class="nm" title="${esc(r.pname)}">${esc(r.pname)}</td>${dows.map((w,i)=>{ const v=r.days[i+1]; if(v) cnt+=v.length;
+      const cls=(w===0?"sun":w===6?"sat":"");
+      return `<td class="${cls} ${v?"hit":""} ${v&&showNames?"multi":""}">${v?(showNames?esc(v.map(initials).join("")):"●"):""}</td>`; }).join("")}<td class="tot">${cnt}</td></tr>`;
+  }
+  const conf = S.monthConfirms[sid] || {};
+  const confirmBox = sid==="all" ? "" : `
+    <div class="confirm">
+      <strong style="color:var(--blue-d)">${jpMonth(S.month)}の確認</strong>
+      <span class="badge ${conf.staffOk?"ok":"warn"}">施術者 ${conf.staffOk?"本部に報告済 "+hhmm(conf.staffAt):"未報告"}</span>
+      <span class="badge ${conf.adminOk?"ok":"warn"}">管理者 ${conf.adminOk?"確認済 "+hhmm(conf.adminAt)+(conf.adminName?"（"+esc(conf.adminName)+"）":""):"未確認"}</span>
+      <span style="margin-left:auto"></span>
+      ${!isAdmin() ? (conf.staffOk || ym(new Date())>S.month
+          ? `<button class="btn sm ${conf.staffOk?"ghost":"pri"}" data-confirm="staff">${conf.staffOk?"本部への報告を取り消す":"本部に報告"}</button>`
+          : `<span class="muted" style="font-size:12px">${(()=>{const [yy,mm]=addMonth(S.month,1).split("-");return Number(mm)+"月1日";})()}から報告できます</span><button class="btn sm pri" disabled>本部に報告</button>`)
+                   : `<button class="btn sm ${conf.adminOk?"ghost":"pri"}" data-confirm="admin">${conf.adminOk?"確認を取り消す":"管理者として確認"}</button>`}
+    </div>`;
+
+  const staffSel = isAdmin() ? `<select class="inp" id="monthStaff">
+      ${staff.map(s=>`<option value="${s.id}" ${sid===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}
+      <option value="all" ${sid==="all"?"selected":""}>全施術者まとめ</option></select>` : "";
+  return `
+  <section class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <button class="btn sm ghost" data-month="-1">◀</button>
+        <strong style="font-size:18px;color:var(--blue-d)">${jpMonth(S.month)}</strong>
+        <button class="btn sm ghost" data-month="1">▶</button>
+      </div>
+      ${staffSel}
+    </div>
+  </section>
+  <div class="stats">
+    <div class="stat"><div class="k">施術件数</div><div class="v">${md.total}<small>件</small></div></div>
+    <div class="stat"><div class="k">患者数</div><div class="v">${md.rows.length}<small>名</small></div></div>
+    <div class="stat"><div class="k">${showNames?"報告日数（延べ）":"施術日数"}</div><div class="v">${md.workDays}<small>日</small></div></div>
+  </div>
+  ${confirmBox}
+  ${!S.monthLoaded ? `<div class="empty">読み込み中…</div>` : md.rows.length ? `
+  <div class="mx-wrap"><table class="mx">
+    <thead><tr><th class="nm">患者名</th>${dows.map((w,i)=>`<th class="${w===0?"sun":w===6?"sat":""}">${i+1}<small>${WD[w]}</small></th>`).join("")}<th class="tot">計</th></tr></thead>
+    <tbody>${tbody}</tbody>
+    <tfoot><tr><td class="nm">日計</td>${dows.map((w,i)=>`<td>${md.dayTotals[i+1]||""}</td>`).join("")}<td class="tot">${md.total}</td></tr></tfoot>
+  </table></div>
+  <div class="legend">${showNames?"マスの文字は施術者名の頭文字です。":"● = 施術した日"}</div>`
+  : `<div class="empty">${jpMonth(S.month)}の報告はまだありません。</div>`}`;
+}
+async function toggleConfirm(kind){
+  const sid = isAdmin()? S.monthStaff : S.uid;
+  if(!sid || sid==="all") return;
+  const ref = S.db.collection("confirms").doc(`${sid}_${S.month}`);
+  const cur = S.monthConfirms[sid] || {staffId:sid, month:S.month};
+  const next = {...cur, staffId:sid, month:S.month};
+  if(kind==="staff" && !cur.staffOk && ym(new Date())<=S.month){ toast("月が終わってから報告できます"); return; }
+  if(kind==="staff"){ next.staffOk=!cur.staffOk; next.staffAt=next.staffOk?new Date().toISOString():null; }
+  else { next.adminOk=!cur.adminOk; next.adminAt=next.adminOk?new Date().toISOString():null; next.adminName=next.adminOk?S.me.name:null; }
+  await safeWrite(()=>ref.set(next), kind==="staff" ? (next.staffOk?"本部に報告しました":"本部への報告を取り消しました") : (next.adminOk?"確認済みにしました":"確認を取り消しました"));
+}
+
+/* ----- reports (admin): list by day ----- */
+function reportsView(embedded=false){
+  const reps=[...S.monthReports].filter(r=>(r.items||[]).length).sort((a,b)=> b.date.localeCompare(a.date) || (b.submittedAt||"").localeCompare(a.submittedAt||""));
+  const staff=staffList();
+  const submittedToday = new Set(reps.filter(r=>r.date===ymd(new Date())).map(r=>r.staffId));
+  const byDate={}; reps.forEach(r=>(byDate[r.date]=byDate[r.date]||[]).push(r));
+  return `
+  ${embedded?"":monthBar()}
+  ${S.month===ym(new Date())?`<section class="card"><h2>今日の報告状況</h2>
+    ${staff.length?`<div class="chips">${staff.map(s=>`<span class="badge ${submittedToday.has(s.id)?"ok":"warn"}">${esc(s.name)} ${submittedToday.has(s.id)?"報告済":"未報告"}</span>`).join("")}</div>`:`<div class="muted">施術者がまだ登録されていません。</div>`}
+  </section>`:""}
+  ${!S.monthLoaded?`<div class="empty">読み込み中…</div>`: Object.keys(byDate).length ? Object.entries(byDate).map(([date,rs])=>{ const d=parseYmd(date); return `
+    <section class="card"><h2>${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）<span class="muted" style="font-weight:400">${rs.reduce((a,r)=>a+r.items.length,0)}件</span></h2>
+      <ul class="list">${rs.map(r=>{ const g={}; r.items.forEach(it=>{ const p=S.patients[it.patientId]; const fid=p?.facilityId ?? it.facilityId; const fn=facName(fid)||it.facilityName; (g[fn]=g[fn]||[]).push(p?.name ?? it.patientName ?? "?"); });
+        return `<li style="align-items:flex-start"><div style="min-width:6em;font-weight:700">${esc(S.members[r.staffId]?.name||r.staffName)}</div>
+          <div class="grow">${Object.entries(g).map(([f,ns])=>`<div><span style="color:var(--blue-d);font-weight:600">${esc(f)}</span>：${ns.map(esc).join("、")}</div>`).join("")}
+          <div class="muted" style="font-size:12px">報告 ${hhmm(r.submittedAt)}</div></div></li>`; }).join("")}</ul>
+    </section>`; }).join("") : `<div class="empty">${jpMonth(S.month)}の報告はまだありません。</div>`}`;
+}
+
+/* ----- facilities & patients ----- */
+function patientsView(){
+  const facs=facList();
+  if(!facs.some(f=>f.id===S.ptFac)) S.ptFac=HOME_ID;
+  const pts=patientsOf(S.ptFac);
+  return `
+  <section class="card">
+    <h2>施設</h2>
+    <div class="chips">${facs.map(f=>`<button class="chip fac ${S.ptFac===f.id?"on":""}" data-ptfac="${f.id}">${esc(f.name)}<span class="cnt">${patientsOf(f.id).length}</span></button>`).join("")}
+      <button class="chip add" data-newfac="patients">＋ 施設を登録</button></div>
+    <div class="muted" style="margin-top:6px">ご自宅で施術する患者は「居宅」に登録してください。</div>
+  </section>
+  <section class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <h2 style="margin:0">${esc(facName(S.ptFac))} の患者（${pts.length}名）</h2>
+      ${S.ptFac!==HOME_ID?`<div class="row"><button class="btn sm ghost" data-renamefac="${S.ptFac}">施設名を変更</button><button class="btn sm danger" data-delfac="${S.ptFac}">施設を削除</button></div>`:""}
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <input class="inp" id="newPt" placeholder="患者名（例：佐藤 一郎）" style="flex:2;min-width:160px">
+      <input class="inp" id="newPtKana" placeholder="ふりがな（並び順用・任意）" style="flex:1;min-width:140px">
+      <button class="btn pri" id="addPt">追加</button>
+    </div>
+    ${pts.length?`<ul class="list">${pts.map(p=>`<li><div class="grow"><b>${esc(p.name)}</b> ${p.kana?`<span class="muted">${esc(p.kana)}</span>`:""}</div>
+      <select class="inp" data-movept="${p.id}" style="padding:5px 8px;font-size:13px" aria-label="施設を移動">${facs.map(f=>`<option value="${f.id}" ${f.id===p.facilityId?"selected":""}>${esc(f.name)}</option>`).join("")}</select>
+      <button class="btn sm" data-editpt="${p.id}">情報</button>
+      <button class="btn sm danger" data-delpt="${p.id}">削除</button></li>`).join("")}</ul>`
+      : `<div class="empty">まだ患者が登録されていません。</div>`}
+  </section>`;
+}
+
+/* ----- members (admin) ----- */
+function membersView(){
+  const all=Object.entries(S.members).map(([id,m])=>({id,...m})).sort((a,b)=>(isAdminId(b.id)-isAdminId(a.id))||a.name.localeCompare(b.name,"ja"));
+  const real=all.filter(m=>!m.placeholder);
+  return `<section class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">メンバー（${all.length}名）</h2>${isAdmin()?`<button class="btn pri" data-issue="1">＋ アカウントを発行</button>`:""}</div>
+    <p class="muted" style="margin-top:8px">スタッフのログイン用アカウントはここで発行します。${S.isOwner?"管理者にする人は右の欄で切り替えてください。":"役割を変えられるのはオーナーだけです。"}</p>
+    <ul class="list">${all.map(m=>`<li style="flex-wrap:wrap"><div class="grow" style="min-width:140px"><b style="${m.active===false?"text-decoration:line-through;color:#999":""}">${esc(m.name)}</b>${m.id===S.uid?' <span class="muted">（自分）</span>':""}${m.active===false?' <span class="badge warn">停止中</span>':""}${m.email?`<div class="muted" style="font-size:11px">${esc(m.email)}</div>`:""}</div>
+      ${m.placeholder
+        ? `<span class="badge warn">アカウント未接続</span>${S.isOwner?`<select class="inp" data-merge="${m.id}" style="padding:5px 8px;font-size:13px"><option value="">本人のアカウントとつなぐ…</option>${real.filter(r=>!isAdminId(r.id)).map(r=>`<option value="${r.id}">${esc(r.name)}</option>`).join("")}</select>`:""}`
+        : (m.id===S.uid && S.isOwner) ? `<span class="badge info">オーナー</span>`
+        : S.isOwner ? `<select class="inp" data-role="${m.id}" style="padding:5px 8px;font-size:13px"><option value="staff" ${!isAdminId(m.id)?"selected":""}>施術者</option><option value="admin" ${isAdminId(m.id)?"selected":""}>管理者</option></select>`
+        : `<span class="badge ${isAdminId(m.id)?"info":"ok"}">${isAdminId(m.id)?"管理者":"施術者"}</span>`}
+      ${!m.placeholder?`<select class="inp" data-memstore="${m.id}" style="padding:5px 8px;font-size:13px"><option value="">店舗未設定</option>${storeList().map(st=>`<option value="${st.id}" ${m.storeId===st.id?"selected":""}>${esc(st.name)}</option>`).join("")}</select>`:""}
+      ${isAdmin()||m.id===S.uid?`<button class="btn sm ghost" data-renamemem="${m.id}">名前変更</button>`:""}
+      ${isAdmin() && !m.placeholder && m.id!==S.uid && m.id!==S.roles?.owner ? `${m.email?`<button class="btn sm ghost" data-resetpw="${m.id}">パスワード再設定</button>`:""}<button class="btn sm ${m.active===false?"":"danger"}" data-toggleactive="${m.id}">${m.active===false?"再開":"停止"}</button>`:""}</li>`).join("")}</ul></section>`;
+}
+
+async function mergeStaff(from, to){
+  toast("移しています…");
+  try{
+    const reps = await S.db.collection("reports").where("staffId","==",from).get();
+    for(const d of reps.docs){ const v=d.data(); const ref=S.db.collection("reports").doc(`${to}_${v.date}`); const cur=await ref.get();
+      let items=v.items||[]; if(cur.exists){ const have=new Set((cur.data().items||[]).map(i=>i.patientId)); items=[...(cur.data().items||[]), ...items.filter(i=>!have.has(i.patientId))]; }
+      await ref.set({...(cur.exists?cur.data():v), ...v, items, staffId:to, staffName:S.members[to]?.name||v.staffName});
+      await S.db.collection("reports").doc(d.id).delete(); }
+    const cs = await S.db.collection("confirms").where("staffId","==",from).get();
+    for(const d of cs.docs){ const v=d.data(); const ref=S.db.collection("confirms").doc(`${to}_${v.month}`); const cur=await ref.get(); if(!cur.exists) await ref.set({...v, staffId:to}); await S.db.collection("confirms").doc(d.id).delete(); }
+    await S.db.collection("members").doc(from).delete();
+    S._subMonth=null; toast(`${reps.size}日分の日報を移しました`); render();
+  }catch(e){ console.error(e); toast("移せませんでした（"+(e?.code||"エラー")+"）"); }
+}
+
+/* ---------- modal ---------- */
+function modal({title, body="", input=null, ok="OK", danger=false}){
+  return new Promise(res=>{
+    const bg=document.createElement("div"); bg.className="modal-bg";
+    bg.innerHTML=`<div class="modal"><h3>${esc(title)}</h3>${body?`<div class="muted">${body}</div>`:""}
+      ${input!==null?`<input class="inp" style="width:100%;margin-top:10px" value="${esc(input)}">`:""}
+      <div class="acts"><button class="btn ghost" data-x="0">キャンセル</button><button class="btn ${danger?"danger":"pri"}" data-x="1">${esc(ok)}</button></div></div>`;
+    document.body.appendChild(bg);
+    const inp=bg.querySelector("input"); inp?.focus();
+    const close=v=>{ bg.remove(); res(v); };
+    bg.addEventListener("click",e=>{ if(e.target===bg) close(null); const x=e.target.closest("[data-x]"); if(x) close(x.dataset.x==="1" ? (inp?inp.value.trim():true) : null); });
+    inp?.addEventListener("keydown",e=>{ if(e.key==="Enter") close(inp.value.trim()); });
+  });
+}
+
+/* ================= 本部 ================= */
+// 料金：令和6年改定（令和6年10月1日〜）の額。設定画面で変更できる。
+const DEFAULT_FEES = {
+  shoken:[1950,2230], sejutsu:[1610,1770],
+  houmon1:[3910,4070], houmon2:[2760,2920], houmon3:[2070,2230], houmon3b:[1760,1920],
+  denryo:100, tokubetsu:250, report:480, rounding:"1"
+};
+const fees = () => { const f={...DEFAULT_FEES}; const s=S.fees||{}; for(const k in s) if(s[k]!==undefined&&s[k]!==null) f[k]=s[k]; return f; };
+const DISEASES = ["神経痛","リウマチ","頸腕症候群","五十肩","腰痛症","頸椎捻挫後遺症","その他"];
+const EXP = [["labor","人件費"],["rent","家賃"],["travel","交通費・車両費"],["supply","消耗品費"],["utility","水道光熱費"],["comm","通信費"],["ad","広告宣伝費"],["other","その他"]];
+const yen = n => (Math.round(Number(n)||0)).toLocaleString("ja-JP");
+const storeList = () => Object.entries(S.stores||{}).map(([id,s])=>({id,...s})).sort((a,b)=>(a.order??0)-(b.order??0)||String(a.name).localeCompare(String(b.name),"ja"));
+const storeName = id => S.stores?.[id]?.name || "店舗未設定";
+const storeOfStaff = sid => S.members[sid]?.storeId || "";
+const memberName = id => S.members[id]?.name || "（不明）";
+
+function wareki(s, withDay=true){
+  if(!s) return "";
+  const d = parseYmd(s.length===7 ? s+"-01" : s); const y=d.getFullYear(), m=d.getMonth()+1, dd=d.getDate();
+  const eras=[["令和",new Date(2019,4,1),2018],["平成",new Date(1989,0,8),1988],["昭和",new Date(1926,11,25),1925],["大正",new Date(1912,6,30),1911],["明治",new Date(1868,0,25),1867]];
+  for(const [n,st,off] of eras) if(+d>=+st){ const yy=y-off; return `${n}${yy===1?"元":yy}年${m}月${withDay?dd+"日":""}`; }
+  return s;
+}
+
+/* ----- 月の計算（報告 → レセプト） ----- */
+function computeMonth(){
+  const F = fees(); const out = {}; const cnt = {};
+  for(const r of S.monthReports) for(const it of (r.items||[])){
+    const p=S.patients[it.patientId]; const fid=p?.facilityId ?? it.facilityId;
+    if(fid===HOME_ID) continue;
+    const k=r.staffId+"|"+r.date+"|"+fid; cnt[k]=(cnt[k]||0)+1;
+  }
+  for(const r of S.monthReports) for(const it of (r.items||[])){
+    const pid=it.patientId; const p=S.patients[pid] || {name:it.patientName||"?", facilityId:it.facilityId};
+    const fid=p.facilityId ?? it.facilityId;
+    const o = out[pid] || (out[pid] = {pid, p, fid, days:[], staffDays:{}});
+    const n = fid===HOME_ID ? 1 : (cnt[r.staffId+"|"+r.date+"|"+fid]||1);
+    if(!o.days.some(d=>d.date===r.date)) o.days.push({date:r.date, n, staffId:r.staffId});
+    o.staffDays[r.staffId]=(o.staffDays[r.staffId]||0)+1;
+  }
+  const list = Object.values(out);
+  for(const o of list){
+    o.days.sort((a,b)=>a.date.localeCompare(b.date));
+    const saved = S.receipts[`${o.pid}_${S.month}`]; const ov = saved?.opts || {};
+    const p=o.p;
+    const opt = {
+      jutsu: ov.jutsu || p.jutsu || "1",
+      denryo: ov.denryo ?? !!p.denryo,
+      tokubetsu: ov.tokubetsu ?? !!p.tokubetsu,
+      report: ov.report ?? false,
+      shoken: ov.shoken ?? (!!p.firstDate && p.firstDate.slice(0,7)===S.month),
+      visit: p.visit || "訪問",
+    };
+    const j = opt.jutsu==="2" ? 1 : 0; const jl = opt.jutsu==="2" ? "2術" : "1術";
+    const lines=[]; const add=(key,label,unit,count)=>{ if(count>0) lines.push({key,label,unit,count,amount:unit*count}); };
+    if(opt.shoken) add("shoken",`初検料（${jl}）`, F.shoken[j], 1);
+    if(opt.visit==="通所") add("sejutsu",`施術料（${jl}）`, F.sejutsu[j], o.days.length);
+    else {
+      const t={1:0,2:0,3:0,4:0}; o.days.forEach(d=>{ t[d.n<=1?1:d.n===2?2:d.n<10?3:4]++; });
+      add("h1",`訪問施術料1（1人・${jl}）`,F.houmon1[j],t[1]);
+      add("h2",`訪問施術料2（2人・${jl}）`,F.houmon2[j],t[2]);
+      add("h3",`訪問施術料3（3〜9人・${jl}）`,F.houmon3[j],t[3]);
+      add("h4",`訪問施術料3（10人以上・${jl}）`,F.houmon3b[j],t[4]);
+    }
+    if(opt.denryo) add("denryo","電療料",F.denryo,o.days.length);
+    if(opt.tokubetsu) add("tokubetsu","特別地域加算",F.tokubetsu,o.days.length);
+    if(opt.report) add("report","施術報告書交付料",F.report,1);
+    o.total = lines.reduce((a,l)=>a+l.amount,0);
+    const rate = (p.burden===undefined||p.burden==="") ? 0.1 : Number(p.burden)/10;
+    let b = o.total*rate; b = F.rounding==="10" ? Math.round(b/10)*10 : Math.floor(b);
+    o.opt=opt; o.lines=lines; o.burden=b; o.claim=o.total-b;
+    o.staffId = Object.entries(o.staffDays).sort((a,b)=>b[1]-a[1])[0]?.[0];
+    o.storeId = storeOfStaff(o.staffId);
+    o.missing = [["insurerNo","保険者番号"],["bango","記号・番号"],["burden","負担割合"],["birth","生年月日"],["disease","傷病名"],["consentDoctor","同意医師"],["consentDate","同意日"]].filter(([k])=>!p[k]).map(x=>x[1]);
+    o.saved = saved || null;
+    o.changed = saved ? (saved.total!==o.total || saved.days!==o.days.length) : false;
+  }
+  const order = Object.fromEntries(facList().map((f,i)=>[f.id,i]));
+  return list.sort((a,b)=> String(storeName(a.storeId)).localeCompare(storeName(b.storeId),"ja") || (order[a.fid]??99)-(order[b.fid]??99) || String(a.p.name).localeCompare(b.p.name,"ja"));
+}
+
+/* ----- 報告回収 ----- */
+function collectView(){
+  const staff = staffList();
+  const groups = [...storeList().map(s=>({id:s.id, s})), {id:"", s:{name:"店舗未設定"}}];
+  const sum = sid => { const md=monthData(sid); return md; };
+  const all = staff.length; const sent = staff.filter(s=>S.monthConfirms[s.id]?.staffOk).length; const got = staff.filter(s=>S.monthConfirms[s.id]?.adminOk).length;
+  return `
+  ${monthBar()}
+  <div class="stats">
+    <div class="stat"><div class="k">施術者</div><div class="v">${all}<small>名</small></div></div>
+    <div class="stat"><div class="k">本部へ報告済み</div><div class="v">${sent}<small>/ ${all}</small></div></div>
+    <div class="stat"><div class="k">本部で受領済み</div><div class="v">${got}<small>/ ${all}</small></div></div>
+  </div>
+  ${groups.map(g=>{
+    const ss = staff.filter(m=>(m.storeId||"")===g.id);
+    if(!ss.length && g.id==="") return "";
+    return `<section class="card"><h2>${esc(g.s.name)}${g.s.managerName?` <span class="muted" style="font-weight:400">管理者：${esc(g.s.managerName)}</span>`:""}</h2>
+      ${ss.length?`<ul class="list">${ss.map(m=>{ const md=sum(m.id); const c=S.monthConfirms[m.id]||{};
+        return `<li><div class="grow"><b>${esc(m.name)}</b><div class="muted" style="font-size:12px">${md.total}件・患者${md.rows.length}名・${md.workDays}日</div></div>
+          <span class="badge ${c.staffOk?"ok":"warn"}">${c.staffOk?"報告済":"未報告"}</span>
+          <button class="btn sm ${c.adminOk?"ghost":"pri"}" data-receive="${m.id}" ${c.staffOk||c.adminOk?"":"disabled"}>${c.adminOk?"受領済み":"受領する"}</button>
+          <button class="btn sm ghost" data-viewstaff="${m.id}">表</button></li>`; }).join("")}</ul>`
+        : `<div class="muted">この店舗の施術者はまだいません。設定 ▸ メンバーで店舗を割り当ててください。</div>`}
+    </section>`; }).join("")}
+  <h3 style="color:var(--blue-d);font-size:15px;margin:20px 4px 10px">日別の報告</h3>
+  ${reportsView(true)}`;
+}
+function monthBar(extra=""){
+  return `<section class="card"><div class="row" style="justify-content:space-between">
+    <div class="row"><button class="btn sm ghost" data-month="-1">◀</button>
+    <strong style="font-size:18px;color:var(--blue-d)">${jpMonth(S.month)}</strong>
+    <button class="btn sm ghost" data-month="1">▶</button></div>${extra}</div></section>`;
+}
+async function receiveStaff(sid){
+  const cur = S.monthConfirms[sid] || {};
+  const next = {...cur, staffId:sid, month:S.month, adminOk:!cur.adminOk, adminAt:!cur.adminOk?new Date().toISOString():null, adminName:!cur.adminOk?S.me.name:null};
+  await safeWrite(()=>S.db.collection("confirms").doc(`${sid}_${S.month}`).set(next), next.adminOk?"受領しました":"受領を取り消しました");
+}
+
+/* ----- レセプト ----- */
+function receiptView(){
+  const list = computeMonth();
+  const stores = storeList();
+  const f = S.rcStore ?? "all";
+  const shown = list.filter(o=> f==="all" || (o.storeId||"")===f);
+  const tot = shown.reduce((a,o)=>({t:a.t+o.total,b:a.b+o.burden,c:a.c+o.claim}),{t:0,b:0,c:0});
+  const confirmed = shown.filter(o=>o.saved && !o.changed).length;
+  const sel = `<select class="inp" id="rcStore"><option value="all">全店舗</option>${stores.map(s=>`<option value="${s.id}" ${f===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}<option value="" ${f===""?"selected":""}>店舗未設定</option></select>`;
+  return `${monthBar(sel)}
+  <div class="stats">
+    <div class="stat"><div class="k">療養費 合計</div><div class="v">${yen(tot.t)}<small>円</small></div></div>
+    <div class="stat"><div class="k">保険請求額</div><div class="v">${yen(tot.c)}<small>円</small></div></div>
+    <div class="stat"><div class="k">確定済み</div><div class="v">${confirmed}<small>/ ${shown.length}件</small></div></div>
+  </div>
+  <section class="card">
+    <div class="row" style="justify-content:space-between">
+      <div class="muted">施術者の報告から自動で計算しています。内容を確認したら「確定」→「印刷する」の順に進めてください。</div>
+      <div class="row"><button class="btn" data-rcconfirm="1" ${shown.length?"":"disabled"}>${shown.length&&confirmed===shown.length?"確定し直す":"この内容で確定"}</button>
+      <button class="btn pri" data-rcprint="all" ${shown.length?"":"disabled"}>印刷する</button></div>
+    </div>
+  </section>
+  ${!S.monthLoaded?`<div class="empty">読み込み中…</div>`: shown.length? `<section class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table class="rc">
+    <thead><tr><th style="text-align:left">患者名</th><th>施設</th><th>日数</th><th>療養費</th><th>負担</th><th>請求額</th><th>状態</th><th></th></tr></thead>
+    <tbody>${shown.map(o=>`<tr>
+      <td style="text-align:left"><b>${esc(o.p.name)}</b><div class="muted" style="font-size:11px">${esc(storeName(o.storeId))}・${esc(memberName(o.staffId))}</div></td>
+      <td>${esc(facName(o.fid))}</td><td>${o.days.length}</td><td>${yen(o.total)}</td><td>${o.p.burden?esc(o.p.burden)+"割":"1割?"}<div class="muted" style="font-size:11px">${yen(o.burden)}</div></td><td><b>${yen(o.claim)}</b></td>
+      <td>${o.missing.length?`<span class="badge warn" title="${esc(o.missing.join("・"))}">保険情報 未入力${o.missing.length}</span>`:o.saved&&!o.changed?`<span class="badge ok">確定</span>`:o.changed?`<span class="badge warn">要再確定</span>`:`<span class="badge info">未確定</span>`}</td>
+      <td style="white-space:nowrap"><button class="btn sm ghost" data-rcedit="${o.pid}">算定</button> <button class="btn sm ghost" data-editpt="${o.pid}">保険</button> <button class="btn sm" data-rcpreview="${o.pid}">見る</button></td>
+    </tr>`).join("")}</tbody></table></div></section>`
+  : `<div class="empty">${jpMonth(S.month)}の報告はまだありません。</div>`}
+  <div class="legend">料金は設定 ▸ 料金表の額で計算しています（初期値：令和6年10月改定）。訪問施術料は、同じ日に同じ施設で施術した人数で自動判定します。</div>`;
+}
+async function confirmReceipts(){
+  const list = computeMonth().filter(o=> (S.rcStore??"all")==="all" || (o.storeId||"")===S.rcStore);
+  const miss = list.filter(o=>o.missing.length).length;
+  const ok = await modal({title:`${jpMonth(S.month)}のレセプトを確定しますか？`, body:`${list.length}件を確定し、売上・PLに反映します。${miss?`<br>保険情報が未入力の患者が${miss}名います（確定はできます）。`:""}`, ok:"確定"});
+  if(!ok) return;
+  toast("確定しています…");
+  for(const o of list){
+    const doc = {month:S.month, patientId:o.pid, patientName:o.p.name, storeId:o.storeId||"", staffId:o.staffId||"", facilityId:o.fid,
+      days:o.days.length, dates:o.days.map(d=>d.date), lines:o.lines, total:o.total, burden:o.burden, claim:o.claim,
+      opts:o.saved?.opts||{}, confirmedAt:new Date().toISOString(), confirmedBy:S.uid};
+    const ok2 = await safeWrite(()=>S.db.collection("receipts").doc(`${o.pid}_${S.month}`).set(doc));
+    if(!ok2) return;
+  }
+  toast(`${list.length}件のレセプトを確定しました`);
+}
+async function editReceiptOpts(pid){
+  const o = computeMonth().find(x=>x.pid===pid); if(!o) return;
+  const v = await formModal(`${o.p.name} さん ${jpMonth(S.month)}の算定`, `
+    <label class="f">術式</label><select class="inp" name="jutsu" style="width:100%"><option value="1" ${o.opt.jutsu==="1"?"selected":""}>1術（はり又はきゅう）</option><option value="2" ${o.opt.jutsu==="2"?"selected":""}>2術（はり・きゅう併用）</option></select>
+    <label class="ck"><input type="checkbox" name="shoken" ${o.opt.shoken?"checked":""}> 初検料を算定する</label>
+    <label class="ck"><input type="checkbox" name="denryo" ${o.opt.denryo?"checked":""}> 電療料を算定する</label>
+    <label class="ck"><input type="checkbox" name="tokubetsu" ${o.opt.tokubetsu?"checked":""}> 特別地域加算を算定する</label>
+    <label class="ck"><input type="checkbox" name="report" ${o.opt.report?"checked":""}> 施術報告書交付料を算定する</label>
+    <p class="muted" style="font-size:12px">この月だけの設定です。毎月同じにしたい項目は「保険」から患者情報で設定してください。</p>`, "保存");
+  if(!v) return;
+  const opts = {jutsu:v.jutsu, shoken:!!v.shoken, denryo:!!v.denryo, tokubetsu:!!v.tokubetsu, report:!!v.report};
+  const ref = S.db.collection("receipts").doc(`${pid}_${S.month}`);
+  const cur = S.receipts[`${pid}_${S.month}`];
+  await safeWrite(()=>ref.set({...(cur||{month:S.month, patientId:pid}), opts}), "算定内容を保存しました");
+}
+
+/* ----- レセプト様式（はり・きゅう療養費支給申請書） ----- */
+function receiptSheet(o){
+  const p=o.p; const st=S.stores?.[o.storeId]||{};
+  const nd=daysIn(S.month); const set=new Set(o.days.map(d=>Number(d.date.slice(8,10))));
+  const ck = (on) => on ? "☑" : "☐";
+  const first=o.days[0]?.date, last=o.days[o.days.length-1]?.date;
+  const dis = p.disease||"";
+  const cell=(l,v,cls="")=>`<td class="l">${l}</td><td class="v ${cls}">${v||"&nbsp;"}</td>`;
+  return `<div class="sheet">
+  <div class="ttl">療養費支給申請書（はり・きゅう用）<span>${wareki(S.month,false)}分</span></div>
+  <table class="g">
+    <tr>${cell("保険者番号",esc(p.insurerNo),"mono")}${cell("保険者名",esc(p.insurerName))}</tr>
+    <tr>${cell("被保険者証<br>記号・番号",esc([p.kigo,p.bango].filter(Boolean).join(" ・ ")),"mono")}${cell("負担割合",p.burden?esc(p.burden)+"割":"")}</tr>
+    <tr>${cell("被保険者氏名",esc(p.insuredName||(p.relation==="家族"?"":p.name)))}${cell("続柄",esc(p.relation||"本人"))}</tr>
+    <tr>${cell("施術を受けた者<br>の氏名",`<b style="font-size:15px">${esc(p.name)}</b>${p.kana?`<br><small>${esc(p.kana)}</small>`:""}`)}${cell("生年月日・性別",`${wareki(p.birth)}　${esc(p.gender||"")}`)}</tr>
+    <tr>${cell("住所",esc(p.address|| (o.fid!==HOME_ID?facName(o.fid):"")))}${cell("施術場所",esc(facName(o.fid))+"（"+esc(o.opt.visit)+"）")}</tr>
+  </table>
+  <table class="g">
+    <tr><td class="l">傷病名</td><td class="v" colspan="3">${DISEASES.map(d=>`${ck(dis===d)}${d}`).join("　")}${dis==="その他"&&p.diseaseOther?`（${esc(p.diseaseOther)}）`:""}</td></tr>
+    <tr>${cell("発病又は負傷<br>年月日",wareki(p.onsetDate))}${cell("初療年月日",wareki(p.firstDate))}</tr>
+    <tr>${cell("施術期間",first?`${wareki(first)} 〜 ${wareki(last)}`:"")}${cell("実日数",o.days.length+" 日")}</tr>
+    <tr>${cell("同意医師",esc([p.consentHospital,p.consentDoctor].filter(Boolean).join("　")))}${cell("同意年月日",wareki(p.consentDate))}</tr>
+  </table>
+  <table class="cal"><tr><td class="l">施術日</td>${Array.from({length:31},(_,i)=>`<td class="${i+1>nd?"na":""}">${i+1<=nd?(set.has(i+1)?`<b>○</b>`:""):""}<small>${i+1}</small></td>`).join("")}</tr></table>
+  <table class="fee">
+    <thead><tr><th>区分</th><th>単価（円）</th><th>回数</th><th>金額（円）</th></tr></thead>
+    <tbody>${o.lines.map(l=>`<tr><td>${esc(l.label)}</td><td class="r">${yen(l.unit)}</td><td class="r">${l.count}</td><td class="r">${yen(l.amount)}</td></tr>`).join("")}</tbody>
+    <tfoot>
+      <tr><td colspan="3">合計</td><td class="r"><b>${yen(o.total)}</b></td></tr>
+      <tr><td colspan="3">一部負担金（${p.burden?esc(p.burden)+"割":"1割"}）</td><td class="r">${yen(o.burden)}</td></tr>
+      <tr class="claim"><td colspan="3">請求金額</td><td class="r">${yen(o.claim)}</td></tr>
+    </tfoot>
+  </table>
+  <table class="g">
+    <tr><td class="l" rowspan="3">施術証明欄</td><td class="v" colspan="3">上記のとおり施術を行い、その費用を領収しました（又は請求します）。</td></tr>
+    <tr>${cell("施術所 名称・所在地",esc([st.clinicName||st.name, st.address, st.phone?("TEL "+st.phone):""].filter(Boolean).join("　")))}</tr>
+    <tr>${cell("施術者氏名・登録記号番号",esc([memberName(o.staffId), st.regNo].filter(Boolean).join("　")) + "　　　　　印")}</tr>
+  </table>
+  <table class="g sign">
+    <tr><td class="l">申請欄</td><td class="v">上記の療養費を申請します。　　年　　月　　日<br>申請者（被保険者）住所<br>氏名　　　　　　　　　　　　　　　　　電話</td></tr>
+    <tr><td class="l">委任欄</td><td class="v">上記の療養費の受領を代理人に委任します。　　年　　月　　日<br>受取代理人　${esc(st.clinicName||st.name||"")}　${esc(memberName(o.staffId))}<br>被保険者氏名　　　　　　　　　　　　　（署名）</td></tr>
+  </table>
+  <div class="foot">あざらしMGT で作成　${new Date().toLocaleDateString("ja-JP")}</div>
+  </div>`;
+}
+const SHEET_CSS = `
+.sheet{width:190mm;min-height:270mm;margin:0 auto;padding:6mm 4mm;font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;color:#111;font-size:11px;box-sizing:border-box;background:#fff}
+.sheet .ttl{text-align:center;font-size:17px;font-weight:700;letter-spacing:.15em;border-bottom:2px solid #111;padding-bottom:4px;margin-bottom:6px}
+.sheet .ttl span{float:right;font-size:12px;letter-spacing:0;font-weight:400;margin-top:4px}
+.sheet table{width:100%;border-collapse:collapse;margin-bottom:5px}
+.sheet td,.sheet th{border:1px solid #333;padding:4px 6px;vertical-align:middle}
+.sheet td.l{background:#f1f1f1;width:22%;font-size:10px;white-space:nowrap}
+.sheet td.v{min-height:18px}
+.sheet .mono{font-family:ui-monospace,Menlo,monospace;letter-spacing:.08em;font-size:12px}
+.sheet table.cal td{text-align:center;padding:1px 0;width:2.7%;height:26px;font-size:12px;position:relative}
+.sheet table.cal td.l{width:8%;font-size:10px}
+.sheet table.cal td small{position:absolute;top:1px;left:2px;font-size:7px;color:#555}
+.sheet table.cal td.na{background:#ddd}
+.sheet table.fee th{background:#f1f1f1;font-size:10px}
+.sheet table.fee td.r{text-align:right;font-variant-numeric:tabular-nums}
+.sheet table.fee tfoot td{font-weight:600}
+.sheet table.fee tr.claim td{font-size:14px;font-weight:800;background:#f6f6f6}
+.sheet table.sign td.v{line-height:2}
+.sheet .foot{text-align:right;font-size:8px;color:#888;margin-top:4px}`;
+async function printReceipts(pids){
+  const list = computeMonth().filter(o=> pids ? pids.includes(o.pid) : ((S.rcStore??"all")==="all" || (o.storeId||"")===S.rcStore));
+  if(!list.length) return;
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>レセプト ${jpMonth(S.month)}</title>
+<style>@page{size:A4;margin:8mm}body{margin:0;background:#eee}.sheet{margin:10px auto;box-shadow:0 0 4px #aaa}@media print{body{background:#fff}.sheet{margin:0;box-shadow:none;page-break-after:always}.bar{display:none}}
+.bar{position:sticky;top:0;background:#5a8bd8;color:#fff;padding:10px;text-align:center;font-family:sans-serif}.bar button{font-size:15px;padding:6px 18px;border-radius:8px;border:0;margin-left:10px;cursor:pointer}${SHEET_CSS}</style></head>
+<body><div class="bar">${jpMonth(S.month)}　レセプト ${list.length}枚 <button onclick="print()">印刷する</button></div>
+${list.map(receiptSheet).join("\n")}
+<script>window.addEventListener("load",()=>setTimeout(()=>{try{print()}catch(e){}},400));<\/script></body></html>`;
+  const url = URL.createObjectURL(new Blob([html],{type:"text/html"}));
+  const w = window.open(url, "_blank");
+  if(!w){ saveFile(`レセプト_${S.month}${pids&&pids.length===1?"_"+list[0].p.name:""}.html`, html, "text/html"); toast("ファイルを保存しました。開くと印刷画面が出ます"); }
+}
+function previewReceipt(pid){
+  const o = computeMonth().find(x=>x.pid===pid); if(!o) return;
+  const bg=document.createElement("div"); bg.className="modal-bg";
+  bg.innerHTML=`<div class="modal" style="max-width:760px;max-height:92vh;overflow:auto;padding:12px">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>${esc(o.p.name)} さん ${jpMonth(S.month)}</b>
+    <div class="row"><button class="btn sm pri" data-pp="1">印刷する</button><button class="btn sm ghost" data-pp="0">閉じる</button></div></div>
+    <div style="overflow:auto;background:#eee;padding:8px;border-radius:8px"><div style="zoom:${Math.min(1,(window.innerWidth-60)/720)}">${receiptSheet(o)}</div></div></div>`;
+  document.body.appendChild(bg);
+  bg.addEventListener("click",e=>{ const b=e.target.closest("[data-pp]"); if(e.target===bg||b?.dataset.pp==="0") bg.remove(); if(b?.dataset.pp==="1"){ bg.remove(); printReceipts([pid]); } });
+}
+
+/* ----- 売上・PL ----- */
+function plView(){
+  const stores = storeList(); const cols=[...stores.map(s=>({id:s.id,name:s.name})), ...(computeMonth().some(o=>!o.storeId)?[{id:"",name:"店舗未設定"}]:[])];
+  const live = computeMonth(); const confirmed = Object.values(S.receipts).filter(r=>r.month===S.month && r.confirmedAt);
+  const useConfirmed = confirmed.length>0;
+  const src = useConfirmed ? confirmed.map(r=>({storeId:r.storeId||"",total:r.total,burden:r.burden,claim:r.claim,days:r.days})) : live.map(o=>({storeId:o.storeId||"",total:o.total,burden:o.burden,claim:o.claim,days:o.days.length}));
+  const agg = id => src.filter(x=>x.storeId===id).reduce((a,x)=>({total:a.total+x.total,burden:a.burden+x.burden,claim:a.claim+x.claim,days:a.days+x.days,n:a.n+1}),{total:0,burden:0,claim:0,days:0,n:0});
+  const rev = Object.fromEntries(cols.map(c=>[c.id,agg(c.id)]));
+  const exp = id => S.pl[`${id}_${S.month}`] || {};
+  const expSum = id => EXP.reduce((a,[k])=>a+(Number(exp(id)[k])||0),0);
+  const T = (fn) => cols.reduce((a,c)=>a+fn(c.id),0);
+  const row = (label, fn, cls="") => `<tr class="${cls}"><td class="lb">${label}</td>${cols.map(c=>`<td>${fn(c.id)}</td>`).join("")}<td class="sum">${typeof fn.total==="function"?fn.total():""}</td></tr>`;
+  const num = (f)=>{ const g=id=>yen(f(id)); g.total=()=>yen(T(f)); return g; };
+  const profit = id => rev[id].total - expSum(id);
+  const inputs = (k) => { const g = id => `<input class="inp plin" id="pl-${id||"none"}-${k}" data-pl="${id}" data-k="${k}" inputmode="numeric" value="${exp(id)[k]??""}" placeholder="0">`; g.total=()=>yen(T(id=>Number(exp(id)[k])||0)); return g; };
+  const ratio = { }; const rf = id => rev[id].total? (profit(id)/rev[id].total*100).toFixed(1)+"%" : "—"; rf.total=()=>{ const t=T(id=>rev[id].total); return t? (T(profit)/t*100).toFixed(1)+"%":"—"; };
+  return `${monthBar()}
+  <div class="stats">
+    <div class="stat"><div class="k">全店 売上</div><div class="v">${yen(T(id=>rev[id].total))}<small>円</small></div></div>
+    <div class="stat"><div class="k">全店 経費</div><div class="v">${yen(T(expSum))}<small>円</small></div></div>
+    <div class="stat"><div class="k">全店 営業利益</div><div class="v" style="color:${T(profit)<0?"#b03a2e":"var(--blue-d)"}">${yen(T(profit))}<small>円</small></div></div>
+  </div>
+  ${useConfirmed?"":`<div class="banner" style="border-radius:12px;margin-bottom:12px">レセプトがまだ確定されていないため、報告からの見込み額で表示しています。</div>`}
+  ${!cols.length?`<div class="empty">店舗がまだありません。設定 ▸ 店舗で登録してください。</div>`:`
+  <section class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table class="pl">
+    <thead><tr><th class="lb">${jpMonth(S.month)}</th>${cols.map(c=>`<th>${esc(c.name)}</th>`).join("")}<th class="sum">全店合計</th></tr></thead>
+    <tbody>
+      <tr class="sec"><td colspan="${cols.length+2}">売上</td></tr>
+      ${row("療養費（売上）",num(id=>rev[id].total),"strong")}
+      ${row("　うち保険請求額",num(id=>rev[id].claim))}
+      ${row("　うち患者負担金",num(id=>rev[id].burden))}
+      ${row("　レセプト枚数",(()=>{const g=id=>rev[id].n; g.total=()=>T(id=>rev[id].n); return g;})())}
+      ${row("　施術日数（延べ）",(()=>{const g=id=>rev[id].days; g.total=()=>T(id=>rev[id].days); return g;})())}
+      <tr class="sec"><td colspan="${cols.length+2}">経費（入力すると自動で保存されます）</td></tr>
+      ${EXP.map(([k,l])=>row(l,inputs(k))).join("")}
+      ${row("経費合計",num(expSum),"strong")}
+      <tr class="sec"><td colspan="${cols.length+2}">利益</td></tr>
+      ${row("営業利益",num(profit),"strong profit")}
+      ${row("利益率",rf)}
+    </tbody></table></div></section>`}
+  <div class="legend">売上は確定したレセプトの療養費合計（保険請求額＋患者負担金）です。店舗は、その患者を主に担当した施術者の所属店舗で集計しています。</div>`;
+}
+let plTimers={};
+function savePl(input){
+  const id=input.dataset.pl, k=input.dataset.k; const key=`${id}_${S.month}`;
+  const v = input.value.replace(/[^\d-]/g,""); const n = v===""?null:Number(v);
+  S.pl[key] = {...(S.pl[key]||{storeId:id, month:S.month}), [k]:n};
+  clearTimeout(plTimers[key]);
+  plTimers[key]=setTimeout(async()=>{ const doc={storeId:id, month:S.month}; EXP.forEach(([kk])=>{ doc[kk]=S.pl[key]?.[kk]??null; });
+    await safeWrite(()=>S.db.collection("pl").doc(key).set(doc)); }, 700);
+}
+
+/* ----- 設定（店舗・メンバー・料金） ----- */
+function settingsView(){
+  const sub = S.setTab || "stores";
+  const nav = `<div class="seg" style="margin-bottom:14px">${[["stores","店舗"],["members","メンバー"],["fees","料金表"],["data","データ"]].map(([k,l])=>`<button data-settab="${k}" class="${sub===k?"on":""}">${l}</button>`).join("")}</div>`;
+  if(sub==="members") return nav + membersView();
+  if(sub==="data"){ if(!S._bkSub){ S._bkSub=true; track(S.db.doc("settings/backup").onSnapshot(s=>{ S.backupInfo=s.exists?s.data():null; render(); }, e=>console.error(e))); } return nav + dataView(); }
+  if(sub==="fees"){
+    const F=fees(); const r=(k,l)=>`<tr><td>${l}</td><td><input class="inp fee" id="fee-${k}-0" data-fee="${k}.0" value="${F[k][0]}" inputmode="numeric"></td><td><input class="inp fee" id="fee-${k}-1" data-fee="${k}.1" value="${F[k][1]}" inputmode="numeric"></td></tr>`;
+    const s=(k,l)=>`<tr><td>${l}</td><td colspan="2"><input class="inp fee" id="fee-${k}" data-fee="${k}" value="${F[k]}" inputmode="numeric"></td></tr>`;
+    return nav + `<section class="card"><h2>はり・きゅう 料金表（円）</h2>
+      <table class="rc"><thead><tr><th style="text-align:left">項目</th><th>1術</th><th>2術</th></tr></thead><tbody>
+      ${r("shoken","初検料")}${r("sejutsu","施術料（通所）")}${r("houmon1","訪問施術料1（1人）")}${r("houmon2","訪問施術料2（2人）")}${r("houmon3","訪問施術料3（3〜9人）")}${r("houmon3b","訪問施術料3（10人以上）")}
+      ${s("denryo","電療料（1回）")}${s("tokubetsu","特別地域加算（1回）")}${s("report","施術報告書交付料")}
+      <tr><td>一部負担金の端数</td><td colspan="2"><select class="inp" data-fee="rounding"><option value="1" ${F.rounding==="1"?"selected":""}>1円単位（切り捨て）</option><option value="10" ${F.rounding==="10"?"selected":""}>10円単位（四捨五入）</option></select></td></tr>
+      </tbody></table>
+      <div class="row" style="margin-top:12px"><button class="btn pri" id="saveFees">保存</button><button class="btn ghost" id="resetFees">初期値（令和6年改定）に戻す</button></div>
+      <p class="muted" style="font-size:12px">令和8年度の改定（案）では、初検料・施術料・訪問施術料の引き上げと、訪問施術料4・5の新設、月16回目以降の減額が予定されています。実施されたら、ここで金額を書き換えてください。</p></section>`;
+  }
+  const stores = storeList();
+  return nav + `<section class="card"><h2>店舗（${stores.length}）</h2>
+    ${stores.length?`<ul class="list">${stores.map(s=>{ const n=Object.values(S.members).filter(m=>m.storeId===s.id).length;
+      return `<li><div class="grow"><b>${esc(s.name)}</b><div class="muted" style="font-size:12px">管理者：${esc(s.managerName||"未設定")}・施術者${n}名${s.regNo?"・登録番号 "+esc(s.regNo):""}</div></div>
+      <button class="btn sm ghost" data-editstore="${s.id}">編集</button></li>`; }).join("")}</ul>`:`<div class="empty">まだ店舗がありません。</div>`}
+    <button class="btn pri" style="margin-top:12px" data-editstore="">＋ 店舗を登録</button>
+    <p class="muted" style="font-size:12px">施術所名・所在地・登録記号番号はレセプトの施術証明欄に印字されます。</p></section>`;
+}
+async function editStore(id){
+  const s = id ? S.stores[id] : {};
+  const mem = Object.entries(S.members).map(([mid,m])=>({id:mid,...m}));
+  const v = await formModal(id?"店舗を編集":"店舗を登録", `
+    <label class="f">店舗名 *</label><input class="inp w" name="name" value="${esc(s.name||"")}" placeholder="例：本店">
+    <label class="f">管理者（施術者）の名前</label><input class="inp w" name="managerName" value="${esc(s.managerName||"")}" list="memlist" placeholder="例：坂本"><datalist id="memlist">${mem.map(m=>`<option value="${esc(m.name)}">`).join("")}</datalist>
+    <label class="f">施術所の名称（レセプト用）</label><input class="inp w" name="clinicName" value="${esc(s.clinicName||"")}" placeholder="例：あざらし鍼灸院 本店">
+    <label class="f">所在地</label><input class="inp w" name="address" value="${esc(s.address||"")}">
+    <label class="f">電話番号</label><input class="inp w" name="phone" value="${esc(s.phone||"")}" inputmode="tel">
+    <label class="f">受領委任の登録記号番号</label><input class="inp w" name="regNo" value="${esc(s.regNo||"")}">
+    ${id?`<button type="button" class="btn sm danger" data-delstore="${id}" style="margin-top:14px">この店舗を削除</button>`:""}`, "保存");
+  if(!v) return;
+  if(!v.name){ toast("店舗名を入力してください"); return; }
+  const nid = id || rid();
+  await safeWrite(()=>S.db.collection("stores").doc(nid).set({...s, ...v, order: s.order ?? Date.now()}), "保存しました");
+}
+
+/* ----- 患者の保険情報フォーム（本部・店舗どちらからでも） ----- */
+async function editPatient(pid){
+  const p = S.patients[pid]; if(!p) return;
+  const sel=(name,opts,val)=>`<select class="inp w" name="${name}">${opts.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${String(val??"")===String(v)?"selected":""}>${esc(l)}</option>`;}).join("")}</select>`;
+  const inp=(name,ph="",type="text")=>`<input class="inp w" name="${name}" type="${type}" value="${esc(p[name]||"")}" placeholder="${ph}">`;
+  const v = await formModal(`${p.name} さんの情報`, `
+    <div class="fgrid">
+    <div><label class="f">氏名 *</label>${inp("name")}</div>
+    <div><label class="f">ふりがな</label>${inp("kana")}</div>
+    <div><label class="f">施設</label>${sel("facilityId",facList().map(f=>[f.id,f.name]),p.facilityId)}</div>
+    <div><label class="f">施術の形</label>${sel("visit",["訪問","通所"],p.visit||"訪問")}</div>
+    <div><label class="f">生年月日</label>${inp("birth","","date")}</div>
+    <div><label class="f">性別</label>${sel("gender",["","男","女"],p.gender)}</div>
+    </div>
+    <h4 class="fh">保険証</h4><div class="fgrid">
+    <div><label class="f">保険者番号</label>${inp("insurerNo","例：39123456")}</div>
+    <div><label class="f">保険者名</label>${inp("insurerName","例：大阪府後期高齢者医療広域連合")}</div>
+    <div><label class="f">記号</label>${inp("kigo")}</div>
+    <div><label class="f">番号</label>${inp("bango")}</div>
+    <div><label class="f">被保険者氏名</label>${inp("insuredName","本人なら空欄でOK")}</div>
+    <div><label class="f">続柄</label>${sel("relation",["本人","家族"],p.relation||"本人")}</div>
+    <div><label class="f">負担割合</label>${sel("burden",[["","未設定"],["1","1割"],["2","2割"],["3","3割"],["0","0割（公費など）"]],p.burden)}</div>
+    <div><label class="f">住所</label>${inp("address")}</div>
+    </div>
+    <h4 class="fh">傷病・同意</h4><div class="fgrid">
+    <div><label class="f">傷病名</label>${sel("disease",["",...DISEASES],p.disease)}</div>
+    <div><label class="f">その他の傷病名</label>${inp("diseaseOther")}</div>
+    <div><label class="f">発病年月日</label>${inp("onsetDate","","date")}</div>
+    <div><label class="f">初療年月日</label>${inp("firstDate","","date")}</div>
+    <div><label class="f">同意医師名</label>${inp("consentDoctor")}</div>
+    <div><label class="f">医療機関名</label>${inp("consentHospital")}</div>
+    <div><label class="f">同意年月日</label>${inp("consentDate","","date")}</div>
+    </div>
+    <h4 class="fh">毎月の算定（基本）</h4>
+    <label class="f">術式</label>${sel("jutsu",[["1","1術（はり又はきゅう）"],["2","2術（はり・きゅう併用）"]],p.jutsu||"1")}
+    <label class="ck"><input type="checkbox" name="denryo" ${p.denryo?"checked":""}> 電療料を算定する</label>
+    <label class="ck"><input type="checkbox" name="tokubetsu" ${p.tokubetsu?"checked":""}> 特別地域加算の対象</label>
+    `, "保存", true);
+  if(!v) return;
+  if(!v.name){ toast("氏名を入力してください"); return; }
+  const doc = {...p, ...v, denryo:!!v.denryo, tokubetsu:!!v.tokubetsu, updatedBy:S.uid, updatedAt:new Date().toISOString()};
+  await safeWrite(()=>S.db.collection("patients").doc(pid).set(doc), "保存しました");
+}
+
+/* ----- 汎用フォームモーダル ----- */
+function formModal(title, html, ok="保存", wide=false){
+  return new Promise(res=>{
+    const bg=document.createElement("div"); bg.className="modal-bg";
+    bg.innerHTML=`<form class="modal" style="max-width:${wide?640:440}px;max-height:92vh;overflow:auto"><h3>${esc(title)}</h3>${html}
+      <div class="acts"><button type="button" class="btn ghost" data-x="0">キャンセル</button><button type="submit" class="btn pri">${esc(ok)}</button></div></form>`;
+    document.body.appendChild(bg);
+    const form=bg.querySelector("form");
+    const close=v=>{ bg.remove(); res(v); };
+    form.addEventListener("submit",e=>{ e.preventDefault(); const fd=new FormData(form); const o={}; for(const [k,v] of fd.entries()) o[k]=typeof v==="string"?v.trim():v; close(o); });
+    bg.addEventListener("click",async e=>{
+      if(e.target===bg) close(null);
+      if(e.target.closest("[data-x='0']")) close(null);
+      const ds2=e.target.closest("[data-delsale]");
+      if(ds2){ e.preventDefault(); const id=ds2.dataset.delsale; close(null);
+        const ok=await modal({title:"この営業記録を削除しますか？", ok:"削除", danger:true});
+        if(ok) await safeWrite(()=>S.db.collection("sales").doc(id).delete(), "削除しました"); return; }
+      const del=e.target.closest("[data-delstore]");
+      if(del){ e.preventDefault(); const id=del.dataset.delstore; close(null);
+        const ok=await modal({title:`「${storeName(id)}」を削除しますか？`, body:"所属している施術者は「店舗未設定」になります。", ok:"削除", danger:true});
+        if(ok) await safeWrite(()=>S.db.collection("stores").doc(id).delete(), "削除しました"); }
+    });
+  });
+}
+
+{ const st=document.createElement("style"); st.textContent=SHEET_CSS; document.head.appendChild(st); }
+/* ----- 営業活動 ----- */
+const SALES_TARGET = ["介護施設","ケアマネ・居宅介護支援","病院・医師","個人・ご家族","その他"];
+const SALES_STATUS = [["visit","訪問・面談","info"],["lead","見込みあり","warn"],["referral","紹介あり","warn"],["start","施術開始","ok"],["lost","見送り","ghost"]];
+const stLabel = k => (SALES_STATUS.find(s=>s[0]===k)||[k,k,"info"]);
+function subscribeSales(){
+  if(S._salesSub) return; S._salesSub=true; S.sales={}; S.salesLoaded=false;
+  S.db.collection("sales").onSnapshot(snap=>{ const m={}; snap.docs.forEach(d=>m[d.id]=d.data()); S.sales=m; S.salesLoaded=true; render(); },
+    e=>{ console.error(e); S.salesLoaded=true; render(); });
+}
+function salesView(){
+  const stores=storeList(); const f=S.slStore??"all";
+  const all=Object.entries(S.sales||{}).map(([id,v])=>({id,...v}));
+  const inStore = x => f==="all" || (x.storeId||"")===f;
+  const month = all.filter(x=>x.date?.slice(0,7)===S.month && inStore(x)).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||"").localeCompare(a.createdAt||""));
+  const today=ymd(new Date());
+  const follow = all.filter(x=>inStore(x) && x.nextDate && x.status!=="lost" && x.status!=="start" && !x.nextDone).sort((a,b)=>a.nextDate.localeCompare(b.nextDate)).slice(0,30);
+  const c = k => month.filter(x=>x.status===k).length;
+  const newPts = month.reduce((a,x)=>a+(x.status==="start"?(Number(x.patients)||1):0),0);
+  const sel = `<select class="inp" id="slStore"><option value="all">全店舗</option>${stores.map(s=>`<option value="${s.id}" ${f===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`;
+  const byStore = stores.map(s=>{ const xs=all.filter(x=>x.date?.slice(0,7)===S.month && x.storeId===s.id); return {s, n:xs.length, start:xs.filter(x=>x.status==="start").reduce((a,x)=>a+(Number(x.patients)||1),0), lead:xs.filter(x=>x.status==="lead"||x.status==="referral").length}; });
+  const item = x => { const [,l,cls]=stLabel(x.status); const d=parseYmd(x.date);
+    return `<li style="align-items:flex-start"><div style="min-width:3.6em;color:var(--blue-d);font-weight:700">${d.getMonth()+1}/${d.getDate()}<div class="muted" style="font-size:11px;font-weight:400">(${WD[d.getDay()]})</div></div>
+      <div class="grow"><div><b>${esc(x.targetName||"（名称なし）")}</b> <span class="muted" style="font-size:12px">${esc(x.targetType||"")}${x.contact?"・"+esc(x.contact):""}</span></div>
+        ${x.memo?`<div style="font-size:13px;margin-top:2px;white-space:pre-wrap">${esc(x.memo)}</div>`:""}
+        <div class="muted" style="font-size:12px;margin-top:3px">${esc(storeName(x.storeId))}・${esc(x.byName||memberName(x.by))}${x.status==="start"&&x.patients?`・開始${esc(x.patients)}名`:""}${x.nextDate?`・次回 ${esc(x.nextDate.slice(5).replace("-","/"))}${x.nextAction?" "+esc(x.nextAction):""}`:""}</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><span class="badge ${cls==="ghost"?"":cls}" ${cls==="ghost"?'style="background:#eef0f4;color:#667089"':""}>${l}</span><button class="btn sm ghost" data-editsale="${x.id}">編集</button></div></li>`; };
+  return `${monthBar(sel)}
+  <div class="stats">
+    <div class="stat"><div class="k">営業件数</div><div class="v">${month.length}<small>件</small></div></div>
+    <div class="stat"><div class="k">見込み・紹介</div><div class="v">${c("lead")+c("referral")}<small>件</small></div></div>
+    <div class="stat"><div class="k">新規開始</div><div class="v">${newPts}<small>名</small></div></div>
+  </div>
+  <section class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">営業活動を記録</h2><button class="btn pri" data-editsale="">＋ 記録する</button></div></section>
+  ${follow.length?`<section class="card"><h2>次回のアクション</h2><ul class="list">${follow.map(x=>`<li><div style="min-width:4.4em;font-weight:700;color:${x.nextDate<today?"#b03a2e":x.nextDate===today?"var(--warn)":"var(--blue-d)"}">${x.nextDate<today?"期限切れ":x.nextDate===today?"今日":x.nextDate.slice(5).replace("-","/")}</div>
+      <div class="grow"><b>${esc(x.targetName)}</b> <span class="muted" style="font-size:12px">${esc(x.nextAction||"")}・${esc(storeName(x.storeId))}</span></div>
+      <button class="btn sm ghost" data-saledone="${x.id}">済み</button></li>`).join("")}</ul></section>`:""}
+  ${f==="all"&&stores.length?`<section class="card" style="padding:0;overflow:hidden"><table class="rc"><thead><tr><th style="text-align:left">店舗</th><th>営業件数</th><th>見込み・紹介</th><th>新規開始</th></tr></thead><tbody>
+    ${byStore.map(r=>`<tr><td style="text-align:left"><b>${esc(r.s.name)}</b></td><td style="text-align:center">${r.n}</td><td style="text-align:center">${r.lead}</td><td style="text-align:center">${r.start}名</td></tr>`).join("")}</tbody></table></section>`:""}
+  <section class="card"><h2>${jpMonth(S.month)}の営業記録（${month.length}件）</h2>
+    ${!S.salesLoaded?`<div class="empty">読み込み中…</div>`:month.length?`<ul class="list">${month.map(item).join("")}</ul>`:`<div class="empty">まだ記録がありません。</div>`}</section>`;
+}
+async function editSale(id){
+  const x = id ? S.sales[id] : {date:ymd(new Date()), storeId: S.slStore&&S.slStore!=="all" ? S.slStore : (S.me?.storeId||""), status:"visit"};
+  const sel=(name,opts,val)=>`<select class="inp w" name="${name}">${opts.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${String(val??"")===String(v)?"selected":""}>${esc(l)}</option>`;}).join("")}</select>`;
+  const inp=(name,ph="",type="text")=>`<input class="inp w" name="${name}" type="${type}" value="${esc(x[name]||"")}" placeholder="${ph}">`;
+  const v = await formModal(id?"営業記録を編集":"営業活動を記録", `
+    <div class="fgrid">
+      <div><label class="f">日付</label>${inp("date","","date")}</div>
+      <div><label class="f">店舗</label>${sel("storeId",[["","未設定"],...storeList().map(s=>[s.id,s.name])],x.storeId)}</div>
+      <div><label class="f">訪問先の種類</label>${sel("targetType",SALES_TARGET,x.targetType||SALES_TARGET[0])}</div>
+      <div><label class="f">訪問先の名前 *</label>${inp("targetName","例：グループホームさくら")}</div>
+      <div><label class="f">担当者・面談相手</label>${inp("contact","例：施設長 田中様")}</div>
+      <div><label class="f">結果</label>${sel("status",SALES_STATUS.map(s=>[s[0],s[1]]),x.status)}</div>
+      <div><label class="f">施術開始の人数</label>${inp("patients","「施術開始」のとき","number")}</div>
+      <div><label class="f">営業した人</label>${sel("by",Object.entries(S.members).filter(([,m])=>!m.placeholder).map(([mid,m])=>[mid,m.name]),x.by||S.uid)}</div>
+    </div>
+    <label class="f">内容・メモ</label><textarea class="inp w" name="memo" rows="3" placeholder="話した内容、ニーズ、課題など">${esc(x.memo||"")}</textarea>
+    <h4 class="fh">次回のアクション</h4>
+    <div class="fgrid">
+      <div><label class="f">予定日</label>${inp("nextDate","","date")}</div>
+      <div><label class="f">やること</label>${inp("nextAction","例：資料を持って再訪問")}</div>
+    </div>
+    ${id?`<button type="button" class="btn sm danger" data-delsale="${id}" style="margin-top:14px">この記録を削除</button>`:""}`, "保存", true);
+  if(!v) return;
+  if(!v.targetName){ toast("訪問先の名前を入力してください"); return; }
+  if(!v.date){ toast("日付を入力してください"); return; }
+  const doc={...x, ...v, month:v.date.slice(0,7), byName:S.members[v.by]?.name||"", nextDone: (v.nextDate&&v.nextDate!==x.nextDate)?false:!!x.nextDone, updatedAt:new Date().toISOString(), createdAt:x.createdAt||new Date().toISOString(), createdBy:x.createdBy||S.uid};
+  await safeWrite(()=>S.db.collection("sales").doc(id||rid()).set(doc), "保存しました");
+}
+
+
+/* ----- アカウント発行 ----- */
+const genPass = () => { const c="abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let p=""; const a=new Uint32Array(10); crypto.getRandomValues(a); a.forEach(x=>p+=c[x%c.length]); return p; };
+async function issueAccount(){
+  const pw = genPass();
+  const v = await formModal("アカウントを発行", `
+    <label class="f">名前 *</label><input class="inp w" name="name" placeholder="例：坂本 隼人">
+    <label class="f">メールアドレス（ログインID） *</label><input class="inp w" name="email" type="email" placeholder="例：sakamoto@example.com">
+    <label class="f">初期パスワード（10文字）</label><input class="inp w" name="password" value="${pw}" style="font-family:ui-monospace,monospace;letter-spacing:.05em">
+    <div class="fgrid">
+      <div><label class="f">役割</label><select class="inp w" name="role"><option value="staff">施術者</option>${S.isOwner?`<option value="admin">管理者</option>`:""}</select></div>
+      <div><label class="f">店舗</label><select class="inp w" name="storeId"><option value="">未設定</option>${storeList().map(st=>`<option value="${st.id}">${esc(st.name)}</option>`).join("")}</select></div>
+    </div>
+    <p class="muted" style="font-size:12px">発行後、このメールアドレスと初期パスワードを本人に伝えてください。本人はログイン後「パスワード再設定」で自分のパスワードに変えられます。</p>`, "発行する");
+  if(!v) return;
+  if(!v.name || !v.email){ toast("名前とメールアドレスを入力してください"); return; }
+  if((v.password||"").length<8){ toast("パスワードは8文字以上にしてください"); return; }
+  let newUid;
+  if(S.local){ newUid = "u-"+rid(); }
+  else{
+    toast("発行しています…");
+    const sec = FB.appM.initializeApp(FIREBASE_CONFIG, "issuer-"+Date.now());
+    try{
+      const sAuth = FB.authM.initializeAuth(sec, {persistence: FB.authM.inMemoryPersistence});
+      const cred = await FB.authM.createUserWithEmailAndPassword(sAuth, v.email, v.password);
+      newUid = cred.user.uid; await FB.authM.signOut(sAuth);
+    }catch(e){
+      const c=e?.code||"";
+      toast(c.includes("email-already-in-use")?"このメールアドレスはすでに登録されています":c.includes("invalid-email")?"メールアドレスの形が正しくありません":c.includes("weak-password")?"パスワードが弱すぎます（8文字以上）":"発行できませんでした（"+c+"）");
+      try{ await FB.appM.deleteApp(sec); }catch(_){}
+      return;
+    }
+    try{ await FB.appM.deleteApp(sec); }catch(_){}
+  }
+  const ok = await safeWrite(()=>S.db.collection("members").doc(newUid).set({name:v.name, email:v.email, storeId:v.storeId||"", active:true, createdAt:new Date().toISOString(), createdBy:S.uid}));
+  if(!ok) return;
+  if(v.role==="admin" && S.isOwner){ const set=new Set(S.admins||[]); set.add(newUid); await safeWrite(()=>S.db.doc("config/roles").set({...(S.roles||{}), owner:S.roles?.owner||S.uid, admins:[...set]})); }
+  const url = location.href.split("#")[0].split("?")[0];
+  const text = `あざらしMGT のアカウントです\nURL：${url}\nメール：${v.email}\n初期パスワード：${v.password}\n※ログイン後、パスワードを変更してください。`;
+  const bg=document.createElement("div"); bg.className="modal-bg";
+  bg.innerHTML=`<div class="modal"><h3>発行しました</h3><p class="muted">この内容を ${esc(v.name)} さんに送ってください。この画面を閉じるとパスワードは再表示できません。</p>
+    <textarea class="inp w" rows="6" readonly style="font-family:ui-monospace,monospace;font-size:13px">${esc(text)}</textarea>
+    <div class="acts"><button class="btn" data-cp="1">コピー</button><button class="btn pri" data-cl="1">閉じる</button></div></div>`;
+  document.body.appendChild(bg);
+  bg.addEventListener("click", async e=>{ if(e.target.closest("[data-cp]")){ try{ await navigator.clipboard.writeText(text); toast("コピーしました"); }catch(_){ bg.querySelector("textarea").select(); toast("選択しました。長押しでコピーしてください"); } } if(e.target.closest("[data-cl]")) bg.remove(); });
+}
+async function resetPw(id){
+  const m=S.members[id]; if(!m?.email) return;
+  const ok=await modal({title:`${m.name} さんにパスワード再設定メールを送りますか？`, body:esc(m.email)+" に、パスワードを決め直すためのメールが届きます。", ok:"送信"}); if(!ok) return;
+  if(S.local){ toast("デモモードでは送信しません"); return; }
+  try{ await FB.authM.sendPasswordResetEmail(FB.auth, m.email); toast("送信しました"); }catch(e){ toast("送信できませんでした（"+(e?.code||"エラー")+"）"); }
+}
+async function toggleActive(id){
+  const m=S.members[id]; const stop = m.active!==false;
+  const ok=await modal({title: stop?`${m.name} さんのアカウントを停止しますか？`:`${m.name} さんのアカウントを再開しますか？`, body: stop?"停止するとログインしてもデータを見られなくなります。これまでの記録は残ります。":"", ok: stop?"停止":"再開", danger:stop}); if(!ok) return;
+  await safeWrite(()=>S.db.collection("members").doc(id).update({active:!stop}), stop?"停止しました":"再開しました");
+}
+
+/* ----- ファイル保存・バックアップ ----- */
+function saveFile(name, content, type="application/json"){
+  const url=URL.createObjectURL(new Blob([content],{type}));
+  const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+const BACKUP_COLS=["members","facilities","patients","stores","settings","reports","confirms","receipts","pl","sales"];
+async function exportBackup(){
+  toast("バックアップを作っています…");
+  try{
+    const data={};
+    for(const c of BACKUP_COLS){ const snap=await S.db.collection(c).get(); data[c]=Object.fromEntries(snap.docs.map(d=>[d.id,d.data()])); }
+    const now=new Date();
+    saveFile(`あざらしMGT_バックアップ_${ymd(now)}.json`, JSON.stringify({app:"azarashi-mgt", version:1, exportedAt:now.toISOString(), data}, null, 1));
+    await S.db.doc("settings/backup").set({lastAt:now.toISOString(), by:S.uid});
+    const n=Object.values(data).reduce((a,o)=>a+Object.keys(o).length,0);
+    toast(`${n}件のデータを保存しました`);
+  }catch(e){ console.error(e); toast("バックアップできませんでした（"+(e?.code||"エラー")+"）"); }
+}
+async function importBackup(file){
+  let j; try{ j=JSON.parse(await file.text()); }catch(e){ toast("ファイルを読み込めませんでした"); return; }
+  if(j?.app!=="azarashi-mgt" || !j.data){ toast("あざらしMGTのバックアップファイルではありません"); return; }
+  const counts=BACKUP_COLS.map(c=>[c,Object.keys(j.data[c]||{}).length]).filter(x=>x[1]);
+  const total=counts.reduce((a,x)=>a+x[1],0);
+  const label={members:"メンバー",facilities:"施設",patients:"患者",stores:"店舗",settings:"設定",reports:"日報",confirms:"本部報告",receipts:"レセプト",pl:"PL",sales:"営業"};
+  const ok=await modal({title:"バックアップから復元しますか？", body:`${j.exportedAt?new Date(j.exportedAt).toLocaleString("ja-JP")+" 時点の":""}データ ${total}件を書き込みます。<br>${counts.map(([c,n])=>`${label[c]||c} ${n}件`).join("・")}<br><b>同じデータがある場合は、ファイルの内容で上書きされます。</b>`, ok:"復元する", danger:true});
+  if(!ok) return;
+  let done=0;
+  for(const [c] of counts){
+    for(const [id,doc] of Object.entries(j.data[c])){
+      if(c==="members" && id===S.uid) { done++; continue; }
+      try{ await S.db.collection(c).doc(id).set(doc); }catch(e){ console.error(c,id,e); toast(`途中で止まりました（${label[c]||c}）。${done}件まで復元済み`); return; }
+      done++; if(done%10===0) toast(`復元中… ${done}/${total}`);
+    }
+  }
+  toast(`${done}件を復元しました`); S._subMonth=null; render();
+}
+function dataView(){
+  const last = S.backupInfo?.lastAt;
+  return `<section class="card"><h2>データのバックアップ</h2>
+    <p class="muted" style="margin-top:0">患者、日報、レセプト、PL、営業記録などをまとめて1つのファイルに保存します。月に1回（レセプト確定のあとなど）保存して、パソコンやGoogleドライブに置いておいてください。</p>
+    <div class="row"><button class="btn pri" data-backup="1">バックアップを保存</button><span class="muted" style="font-size:13px">前回：${last?new Date(last).toLocaleString("ja-JP"):"まだありません"}</span></div>
+    <p class="muted" style="font-size:12px">ファイルには患者さんの個人情報が入っています。人に渡したり、共有フォルダに置いたりしないでください。</p></section>
+  ${S.isOwner?`<section class="card"><h2>バックアップから復元</h2>
+    <p class="muted" style="margin-top:0">保存したバックアップファイルを選ぶと、その内容でデータを書き戻します。オーナーだけが使えます。</p>
+    <label class="btn" style="display:inline-block">ファイルを選んで復元<input type="file" id="restoreFile" accept=".json,application/json" style="display:none"></label></section>`:""}`;
+}
+/* ---------- events ---------- */
+document.addEventListener("click", async e=>{
+  const t = e.target.closest("button"); if(!t) return;
+  const ds = t.dataset;
+
+  if(ds.obrole){ S._obRole=ds.obrole; S._obName=$("#obName")?.value||S._obName; render(); return; }
+  if(t.id==="obGo"){
+    const name=($("#obName").value||"").trim(); if(!name){ toast("お名前を入力してください"); return; }
+    let exists=false; try{ const r=await S.db.doc("config/roles").get(); exists=r.exists && r.data().owner===S.uid; }catch(e){ toast("通信できませんでした。もう一度お試しください"); return; }
+    if(!exists){ const ok1 = await safeWrite(()=>S.db.doc("config/roles").set({owner:S.uid, admins:[]})); if(!ok1) return; }
+    const ok2 = await safeWrite(()=>S.db.collection("members").doc(S.uid).set({name, email:S.authUser?.email||"", active:true, createdAt:new Date().toISOString()}), "登録しました");
+    if(ok2){ S.needOwnerSetup=false; await afterLogin(); }
+    return;
+  }
+  if(ds.logout){ logout(); return; }
+  if(ds.forgot){ forgotPassword(); return; }
+  if(ds.tab){ if(S.tab==="daily" && S.dirty && ds.tab!=="daily"){ const ok=await modal({title:"未報告の変更があります", body:"報告せずに移動すると、選択内容は消えます。", ok:"移動する"}); if(!ok) return; S._dayKey=null; }
+    S.tab=ds.tab; render(); window.scrollTo(0,0); return; }
+
+  // daily
+  if(ds.day){
+    if(S.dirty){ const ok=await modal({title:"未報告の変更があります", body:"日付を変えると、選択内容は消えます。", ok:"変更する"}); if(!ok) return; }
+    if(ds.day==="today") S.date=ymd(new Date()); else { const d=parseYmd(S.date); d.setDate(d.getDate()+Number(ds.day)); if(ymd(d)>ymd(new Date())) return; S.date=ymd(d); }
+    render(); return;
+  }
+  if(ds.fac){ S.curFac=ds.fac; render(); return; }
+  if(ds.pt){ S.sel.has(ds.pt)?S.sel.delete(ds.pt):S.sel.add(ds.pt); S.dirty=true; render(); return; }
+  if(ds.allfac){ patientsOf(ds.allfac).forEach(p=>S.sel.add(p.id)); S.dirty=true; render(); return; }
+  if(ds.clearfac){ patientsOf(ds.clearfac).forEach(p=>S.sel.delete(p.id)); S.dirty=true; render(); return; }
+  if(ds.gotoPatients){ S.ptFac=ds.gotoPatients; S.tab="patients"; render(); return; }
+  if(t.id==="send"){ sendReport(); return; }
+  if(t.id==="cancelReport"){
+    const ok=await modal({title:`${jpDate(S.date)}の報告を取り消しますか？`, body:"管理者側からもこの日の報告が消えます。", ok:"取り消す", danger:true}); if(!ok) return;
+    if(await safeWrite(()=>S.db.collection("reports").doc(`${S.uid}_${S.date}`).delete(), "報告を取り消しました")){ S.loadedReport=null; S.sel=new Set(); S.dirty=false; render(); }
+    return;
+  }
+
+  // 本部
+  if(ds.issue){ issueAccount(); return; }
+  if(ds.resetpw){ resetPw(ds.resetpw); return; }
+  if(ds.toggleactive){ toggleActive(ds.toggleactive); return; }
+  if(ds.backup){ exportBackup(); return; }
+  if(ds.editsale!==undefined){ editSale(ds.editsale); return; }
+  if(ds.saledone){ await safeWrite(()=>S.db.collection("sales").doc(ds.saledone).update({nextDone:true}), "済みにしました"); return; }
+  if(ds.receive){ receiveStaff(ds.receive); return; }
+  if(ds.viewstaff){ S.monthStaff=ds.viewstaff; S.tab="month"; render(); window.scrollTo(0,0); return; }
+  if(ds.rcconfirm){ confirmReceipts(); return; }
+  if(ds.rcprint){ printReceipts(null); return; }
+  if(ds.rcedit){ editReceiptOpts(ds.rcedit); return; }
+  if(ds.rcpreview){ previewReceipt(ds.rcpreview); return; }
+  if(ds.editpt){ editPatient(ds.editpt); return; }
+  if(ds.settab){ S.setTab=ds.settab; render(); return; }
+  if(ds.editstore!==undefined){ editStore(ds.editstore); return; }
+  if(t.id==="saveFees"){
+    const f={}; document.querySelectorAll("[data-fee]").forEach(i=>{ const [k,idx]=i.dataset.fee.split("."); if(k==="rounding"){ f.rounding=i.value; return; } const n=Number(String(i.value).replace(/[^\d]/g,""))||0; if(idx!==undefined){ (f[k]=f[k]||[0,0])[Number(idx)]=n; } else f[k]=n; });
+    await safeWrite(()=>S.db.doc("settings/fees").set(f), "料金表を保存しました"); return;
+  }
+  if(t.id==="resetFees"){ const ok=await modal({title:"料金表を初期値に戻しますか？", body:"令和6年10月改定の額に戻ります。", ok:"戻す"}); if(!ok) return; await safeWrite(()=>S.db.doc("settings/fees").set({...DEFAULT_FEES}), "初期値に戻しました"); return; }
+
+  // month
+  if(ds.month){ S.month=addMonth(S.month, Number(ds.month)); render(); return; }
+  if(ds.confirm){ toggleConfirm(ds.confirm); return; }
+
+  // facilities / patients
+  if(ds.ptfac){ S.ptFac=ds.ptfac; render(); return; }
+  if(ds.newfac){
+    const name=await modal({title:"施設を登録", body:"入居施設の名前を入力してください。", input:"", ok:"登録"});
+    if(!name) return;
+    if(facList().some(f=>f.name===name)){ toast("同じ名前の施設があります"); return; }
+    const id=rid();
+    if(await safeWrite(()=>S.db.collection("facilities").doc(id).set({name, order:Date.now(), createdBy:S.uid}), `「${name}」を登録しました`)){
+      if(ds.newfac==="daily") S.curFac=id; else S.ptFac=id; render(); }
+    return;
+  }
+  if(t.id==="addPt"){
+    const name=($("#newPt").value||"").trim(); const kana=($("#newPtKana").value||"").trim();
+    if(!name){ toast("患者名を入力してください"); return; }
+    if(patientsOf(S.ptFac).some(p=>p.name===name)){ toast("この施設に同じ名前の患者がいます"); return; }
+    $("#newPt").value=""; $("#newPtKana").value=""; S._clear=new Set(["newPt","newPtKana"]);
+    await safeWrite(()=>S.db.collection("patients").doc(rid()).set({name, kana, facilityId:S.ptFac, active:true, createdBy:S.uid}), `${name} さんを追加しました`);
+    setTimeout(()=>$("#newPt")?.focus(),50);
+    return;
+  }
+  if(ds.delpt){
+    const p=S.patients[ds.delpt];
+    const ok=await modal({title:`${p.name} さんを削除しますか？`, body:"これまでの報告記録は残ります。", ok:"削除", danger:true}); if(!ok) return;
+    await safeWrite(()=>S.db.collection("patients").doc(ds.delpt).update({active:false}), "削除しました");
+    return;
+  }
+  if(ds.renamefac){
+    const f=S.facilities[ds.renamefac]; const v=await modal({title:"施設名を変更", input:f.name, ok:"変更"}); if(!v || v===f.name) return;
+    await safeWrite(()=>S.db.collection("facilities").doc(ds.renamefac).update({name:v}), "変更しました"); return;
+  }
+  if(ds.delfac){
+    if(patientsOf(ds.delfac).length){ toast("患者が登録されている施設は削除できません。先に患者を移動または削除してください。"); return; }
+    const ok=await modal({title:`「${facName(ds.delfac)}」を削除しますか？`, ok:"削除", danger:true}); if(!ok) return;
+    if(await safeWrite(()=>S.db.collection("facilities").doc(ds.delfac).delete(), "削除しました")){ S.ptFac=HOME_ID; render(); }
+    return;
+  }
+  // members
+  if(ds.renamemem){
+    const m=S.members[ds.renamemem]; const v=await modal({title:"名前を変更", input:m.name, ok:"変更"}); if(!v||v===m.name) return;
+    await safeWrite(()=>S.db.collection("members").doc(ds.renamemem).update({name:v}), "変更しました"); return;
+  }
+});
+document.addEventListener("change", async e=>{
+  const t=e.target;
+  if(t.id==="restoreFile" && t.files?.[0]){ const f=t.files[0]; t.value=""; importBackup(f); return; }
+  if(t.id==="slStore"){ S.slStore=t.value; render(); return; }
+  if(t.id==="rcStore"){ S.rcStore=t.value; render(); return; }
+  if(t.dataset.memstore!==undefined){ await safeWrite(()=>S.db.collection("members").doc(t.dataset.memstore).update({storeId:t.value}), "店舗を設定しました"); return; }
+  if(t.id==="monthStaff"){ S.monthStaff=t.value; render(); return; }
+  if(t.dataset.movept){ await safeWrite(()=>S.db.collection("patients").doc(t.dataset.movept).update({facilityId:t.value}), `${facName(t.value)} に移動しました`); return; }
+  if(t.dataset.role){
+    if(!S.isOwner) return;
+    const id=t.dataset.role; const set=new Set(S.admins||[]);
+    t.value==="admin" ? set.add(id) : set.delete(id);
+    await safeWrite(()=>S.db.doc("config/roles").set({...(S.roles||{}), owner:S.roles?.owner||S.uid, admins:[...set]}), "役割を変更しました"); return;
+  }
+  if(t.dataset.merge){
+    const from=t.dataset.merge, to=t.value; if(!to) return;
+    const fm=S.members[from], tm=S.members[to];
+    const ok=await modal({title:`「${fm.name}」の記録を ${tm.name} さんのアカウントに移しますか？`, body:"これまでの日報と本部への報告がすべて移ります。", ok:"移す"});
+    if(!ok){ render(); return; }
+    await mergeStaff(from, to); return;
+  }
+});
+document.addEventListener("input", e=>{ if(e.target.classList?.contains("plin")) savePl(e.target); });
+document.addEventListener("keydown", e=>{
+  if(e.key!=="Enter") return;
+  if(e.target.id==="newPt"||e.target.id==="newPtKana") $("#addPt")?.click();
+  if(e.target.id==="obName") $("#obGo")?.click();
+});
+window.addEventListener("beforeunload", e=>{ if(S.dirty){ e.preventDefault(); e.returnValue=""; } });
+</script>
+</body>
+</html>

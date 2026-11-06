@@ -44,6 +44,19 @@ main{max-width:980px;margin:0 auto;padding:16px 14px 110px}
 .datebar .d{font-size:22px;font-weight:700;color:var(--blue-d)}
 .datebar .w{font-size:15px;color:var(--sub)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
+.faclist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.faclist li{border:1.5px solid var(--blue-m);border-radius:12px;padding:10px 12px;background:#fff}
+.faclist li.on{border-color:var(--blue);background:var(--blue-l);box-shadow:0 0 0 2px var(--blue-m)}
+.faclist .fhead{display:flex;align-items:center;gap:8px}
+.faclist .fname{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.faclist .fname b{font-size:16px;color:var(--ink)}
+.faclist .cnt{background:var(--blue);color:#fff;border-radius:99px;font-size:12px;padding:2px 9px;font-weight:700}
+.faclist .finfo{padding:4px 12px;font-size:12.5px}
+.faclist .fsub{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px;margin-top:4px;width:100%;box-sizing:border-box}
+.faclist .muted{font-size:12.5px;overflow-wrap:anywhere}
+.faclist .facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.faclist .facts a.btn{text-decoration:none;display:inline-flex;align-items:center}
+.faclist .facnum{font-size:11.5px;margin-top:6px;overflow-wrap:anywhere}
 .chip{border:1.5px solid var(--blue-m);background:#fff;color:var(--ink);border-radius:12px;padding:10px 14px;font-weight:600;position:relative;min-height:44px}
 .chip .cnt{display:inline-block;margin-left:6px;background:var(--blue);color:#fff;border-radius:99px;font-size:11px;padding:1px 7px}
 .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
@@ -246,6 +259,7 @@ function wrapFirestore(fs, m){
   };}
   return { doc:docRef, collection:p=>Object.assign(query(p,[]),{path:p, doc:id=>docRef(p+"/"+(id||rid())), add:async d=>{ const r=docRef(p+"/"+rid()); await r.set(d); return r; }}) };
 }
+const IS_PREVIEW = /\/preview\//.test(location.pathname);
 const DEMO = /[?&#]demo\b/.test(location.href) || location.protocol==="file:";
 (async function boot(){
   if(DEMO){ S.db=makeLocalDB(); S.local=true; S.uid="local-user"; S.authUser={email:OWNER_EMAIL}; S.authReady=true;
@@ -393,7 +407,7 @@ function render(){
 
 function shell(inner){
   const me = S.me;
-  return `${S.local?`<div class="banner">デモモード：入力内容は保存されず、閉じると消えます。</div>`:""}
+  return `${S.local?`<div class="banner">デモモード：入力内容は保存されず、閉じると消えます。</div>`:IS_PREVIEW?`<div class="banner">確認用（プレビュー版）：本番と同じデータです。ここで入力・保存した内容は本番にも反映されます。</div>`:""}
   <header class="hdr">
     <div class="logo"><img src="${LOGO}" alt=""></div>
     <h1>あざらしMGT</h1>
@@ -645,15 +659,14 @@ function patientsView(){
   const pts=patientsOf(S.ptFac);
   return `
   <section class="card">
-    <h2>施設</h2>
-    <div class="chips">${facs.map(f=>`<button class="chip fac ${S.ptFac===f.id?"on":""}" data-ptfac="${f.id}">${esc(f.name)}<span class="cnt">${patientsOf(f.id).length}</span></button>`).join("")}
-      <button class="chip add" data-newfac="patients">＋ 施設を登録</button></div>
-    <div class="muted" style="margin-top:6px">ご自宅で施術する患者は「居宅」に登録してください。</div>
+    <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">施設（${facs.length-1}件）</h2><button class="btn sm pri" data-newfac="patients">＋ 施設を登録</button></div>
+    <ul class="faclist">${facs.map(f=>facRow(f)).join("")}</ul>
+    <div class="muted" style="margin-top:8px">施設名を押すと、下にその施設の患者が出ます。ご自宅で施術する患者は「居宅」に登録してください。</div>
   </section>
   <section class="card">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
       <h2 style="margin:0">${esc(facName(S.ptFac))} の患者（${pts.length}名）</h2>
-      ${S.ptFac!==HOME_ID?`<div class="row"><button class="btn sm ghost" data-renamefac="${S.ptFac}">施設名を変更</button><button class="btn sm danger" data-delfac="${S.ptFac}">施設を削除</button></div>`:""}
+      ${S.ptFac!==HOME_ID?`<button class="btn sm ghost" data-editfac="${S.ptFac}">施設の情報を編集</button>`:""}
     </div>
     <div class="row" style="margin-bottom:10px">
       <input class="inp" id="newPt" placeholder="患者名（例：佐藤 一郎）" style="flex:2;min-width:160px">
@@ -668,6 +681,50 @@ function patientsView(){
   </section>`;
 }
 
+const telHref = v => "tel:"+String(v||"").replace(/[^0-9+]/g,"");
+const mapHref = v => "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(v||"");
+function facRow(f){
+  const on=S.ptFac===f.id, n=patientsOf(f.id).length;
+  const head = `<div class="fhead"><button class="fname" data-ptfac="${f.id}"><b>${esc(f.name)}</b><span class="cnt">${n}名</span></button>${f.id!==HOME_ID?`<button class="btn sm ghost finfo" data-editfac="${f.id}">情報</button>`:""}</div>`;
+  if(f.id===HOME_ID) return `<li class="${on?"on":""}">${head}<button class="fsub" data-ptfac="${f.id}"><span class="muted">ご自宅で施術する患者</span></button></li>`;
+  const sub = [f.address?`📍 ${esc(f.address)}`:"", f.contact?`👤 ${esc(f.contact)}${f.contactRole?`（${esc(f.contactRole)}）`:""}`:""].filter(Boolean);
+  const acts = [f.contactTel?`<a class="btn sm pri" href="${telHref(f.contactTel)}">📞 担当者</a>`:"", f.tel?`<a class="btn sm ${f.contactTel?"":"pri"}" href="${telHref(f.tel)}">📞 施設</a>`:"", f.address?`<a class="btn sm ghost" href="${mapHref(f.address)}" target="_blank" rel="noopener">地図</a>`:""].filter(Boolean);
+  return `<li class="${on?"on":""}">${head}
+    ${sub.length?`<button class="fsub" data-ptfac="${f.id}">${sub.map(x=>`<span class="muted">${x}</span>`).join("")}</button>`:""}
+    ${acts.length?`<div class="facts">${acts.join("")}</div>`:""}
+    ${(f.contactTel||f.tel||f.email)?`<div class="facnum muted">${f.contactTel?`担当 ${esc(f.contactTel)}　`:""}${f.tel?`施設 ${esc(f.tel)}　`:""}${f.fax?`FAX ${esc(f.fax)}　`:""}${f.email?`✉ ${esc(f.email)}`:""}</div>`:""}
+    ${f.memo?`<div class="facnum muted">📝 ${esc(f.memo)}</div>`:""}
+  </li>`;
+}
+async function editFacility(id, from){
+  const f = id ? S.facilities[id] : {};
+  const inp=(name,ph="",type="text",mode="")=>`<input class="inp w" name="${name}" type="${type}" ${mode?`inputmode="${mode}"`:""} value="${esc(f[name]||"")}" placeholder="${ph}">`;
+  const v = await formModal(id?"施設の情報":"施設を登録", `
+    <label class="f">施設名 *</label>${inp("name","例：アスター上田")}
+    <label class="f">住所</label>${inp("address","例：大阪府寝屋川市〇〇町1-2-3")}
+    <label class="f">施設の電話番号</label>${inp("tel","例：072-000-0000","tel","tel")}
+    <label class="f">FAX</label>${inp("fax","","tel","tel")}
+    <div class="fgrid">
+      <div><label class="f">担当者の名前</label>${inp("contact","例：田中 花子")}</div>
+      <div><label class="f">役職</label>${inp("contactRole","例：施設長・看護師")}</div>
+    </div>
+    <label class="f">担当者の電話（携帯など）</label>${inp("contactTel","例：090-0000-0000","tel","tel")}
+    <label class="f">メール</label>${inp("email","","email","email")}
+    <label class="f">メモ</label><textarea class="inp w" name="memo" rows="3" placeholder="例：訪問は午後のみ、駐車場は裏">${esc(f.memo||"")}</textarea>
+    ${id?`<button type="button" class="btn sm danger" data-delfacm="${id}" style="margin-top:14px">この施設を削除</button>`:""}`, id?"保存":"登録");
+  if(!v) return;
+  if(!v.name){ toast("施設名を入力してください"); return; }
+  if(facList().some(x=>x.name===v.name && x.id!==id)){ toast("同じ名前の施設があります"); return; }
+  const nid = id || rid();
+  const doc = id ? {...f, ...v} : {...v, order:Date.now(), createdBy:S.uid};
+  if(await safeWrite(()=>S.db.collection("facilities").doc(nid).set(doc), id?"保存しました":`「${v.name}」を登録しました`)){
+    if(!id){ if(from==="daily") S.curFac=nid; else S.ptFac=nid; } render(); }
+}
+async function deleteFacility(id){
+  if(patientsOf(id).length){ toast("患者が登録されている施設は削除できません。先に患者を移動または削除してください。"); return; }
+  const ok=await modal({title:`「${facName(id)}」を削除しますか？`, ok:"削除", danger:true}); if(!ok) return;
+  if(await safeWrite(()=>S.db.collection("facilities").doc(id).delete(), "削除しました")){ S.ptFac=HOME_ID; render(); }
+}
 /* ----- members (admin) ----- */
 function membersView(){
   const all=Object.entries(S.members).map(([id,m])=>({id,...m})).sort((a,b)=>(isAdminId(b.id)-isAdminId(a.id))||a.name.localeCompare(b.name,"ja"));
@@ -1309,6 +1366,8 @@ function formModal(title, html, ok="保存", wide=false){
       if(ds2){ e.preventDefault(); const id=ds2.dataset.delsale; close(null);
         const ok=await modal({title:"この営業記録を削除しますか？", ok:"削除", danger:true});
         if(ok) await safeWrite(()=>S.db.collection("sales").doc(id).delete(), "削除しました"); return; }
+      const dfm=e.target.closest("[data-delfacm]");
+      if(dfm){ e.preventDefault(); close(null); deleteFacility(dfm.dataset.delfacm); return; }
       const del=e.target.closest("[data-delstore]");
       if(del){ e.preventDefault(); const id=del.dataset.delstore; close(null);
         const ok=await modal({title:`「${storeName(id)}」を削除しますか？`, body:"所属している施術者は「店舗未設定」になります。", ok:"削除", danger:true});
@@ -1559,15 +1618,8 @@ document.addEventListener("click", async e=>{
 
   // facilities / patients
   if(ds.ptfac){ S.ptFac=ds.ptfac; render(); return; }
-  if(ds.newfac){
-    const name=await modal({title:"施設を登録", body:"入居施設の名前を入力してください。", input:"", ok:"登録"});
-    if(!name) return;
-    if(facList().some(f=>f.name===name)){ toast("同じ名前の施設があります"); return; }
-    const id=rid();
-    if(await safeWrite(()=>S.db.collection("facilities").doc(id).set({name, order:Date.now(), createdBy:S.uid}), `「${name}」を登録しました`)){
-      if(ds.newfac==="daily") S.curFac=id; else S.ptFac=id; render(); }
-    return;
-  }
+  if(ds.newfac){ editFacility(null, ds.newfac); return; }
+  if(ds.editfac){ editFacility(ds.editfac); return; }
   if(t.id==="addPt"){
     const name=($("#newPt").value||"").trim(); const kana=($("#newPtKana").value||"").trim();
     if(!name){ toast("患者名を入力してください"); return; }
@@ -1583,16 +1635,7 @@ document.addEventListener("click", async e=>{
     await safeWrite(()=>S.db.collection("patients").doc(ds.delpt).update({active:false}), "削除しました");
     return;
   }
-  if(ds.renamefac){
-    const f=S.facilities[ds.renamefac]; const v=await modal({title:"施設名を変更", input:f.name, ok:"変更"}); if(!v || v===f.name) return;
-    await safeWrite(()=>S.db.collection("facilities").doc(ds.renamefac).update({name:v}), "変更しました"); return;
-  }
-  if(ds.delfac){
-    if(patientsOf(ds.delfac).length){ toast("患者が登録されている施設は削除できません。先に患者を移動または削除してください。"); return; }
-    const ok=await modal({title:`「${facName(ds.delfac)}」を削除しますか？`, ok:"削除", danger:true}); if(!ok) return;
-    if(await safeWrite(()=>S.db.collection("facilities").doc(ds.delfac).delete(), "削除しました")){ S.ptFac=HOME_ID; render(); }
-    return;
-  }
+  if(ds.delfac){ deleteFacility(ds.delfac); return; }
   // members
   if(ds.renamemem){
     const m=S.members[ds.renamemem]; const v=await modal({title:"名前を変更", input:m.name, ok:"変更"}); if(!v||v===m.name) return;

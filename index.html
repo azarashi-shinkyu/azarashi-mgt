@@ -248,7 +248,12 @@ function wrapFirestore(fs, m){
 }
 const DEMO = /[?&#]demo\b/.test(location.href) || location.protocol==="file:";
 (async function boot(){
-  if(DEMO){ S.db=makeLocalDB(); S.local=true; S.uid="local-user"; S.authUser={email:OWNER_EMAIL}; S.authReady=true; await afterLogin(); return; }
+  if(DEMO){ S.db=makeLocalDB(); S.local=true; S.uid="local-user"; S.authUser={email:OWNER_EMAIL}; S.authReady=true;
+    if(window.__SEED__){ const sd=window.__SEED__.data||{};
+      await S.db.doc("config/roles").set({owner:S.uid, admins:[]});
+      await S.db.collection("members").doc(S.uid).set({name:"石井（デモ）", email:OWNER_EMAIL, active:true, createdAt:new Date().toISOString()});
+      for(const [c,docs] of Object.entries(sd)) for(const [id,d] of Object.entries(docs)) await S.db.collection(c).doc(id).set(d); }
+    await afterLogin(); return; }
   try{
     const base=`https://www.gstatic.com/firebasejs/${FB_VER}/`;
     const [appM, authM, fsM] = await Promise.all([import(base+"firebase-app.js"), import(base+"firebase-auth.js"), import(base+"firebase-firestore.js")]);
@@ -711,13 +716,14 @@ function modal({title, body="", input=null, ok="OK", danger=false}){
 }
 
 /* ================= 本部 ================= */
-// 料金：令和6年改定（令和6年10月1日〜）の額。設定画面で変更できる。
+// 料金：令和8年度改定の額。設定画面で変更できる。
 const DEFAULT_FEES = {
-  shoken:[1950,2230], sejutsu:[1610,1770],
-  houmon1:[3910,4070], houmon2:[2760,2920], houmon3:[2070,2230], houmon3b:[1760,1920],
-  denryo:100, tokubetsu:250, report:480, rounding:"1"
+  shoken:[2000,2320], sejutsu:[1650,1820],
+  houmon1:[3950,4120], houmon2:[2800,2970], houmon3:[2110,2280], houmon4:[1800,1970], houmon5:[1720,1890],
+  denryo:100, tokubetsu:250, report:480, meisai:10, half16:"1", rounding:"1", version:"R8"
 };
-const fees = () => { const f={...DEFAULT_FEES}; const s=S.fees||{}; for(const k in s) if(s[k]!==undefined&&s[k]!==null) f[k]=s[k]; return f; };
+const fees = () => { const f={...DEFAULT_FEES}; const s=S.fees||{}; if(s.version!=="R8") return f; for(const k in s) if(s[k]!==undefined&&s[k]!==null) f[k]=s[k]; return f; };
+const HOUMON_LABEL = {1:"訪問施術料1（1人）",2:"訪問施術料2（2人）",3:"訪問施術料3（3〜9人）",4:"訪問施術料4（10〜19人）",5:"訪問施術料5（20人以上）"};
 const DISEASES = ["神経痛","リウマチ","頸腕症候群","五十肩","腰痛症","頸椎捻挫後遺症","その他"];
 const EXP = [["labor","人件費"],["rent","家賃"],["travel","交通費・車両費"],["supply","消耗品費"],["utility","水道光熱費"],["comm","通信費"],["ad","広告宣伝費"],["other","その他"]];
 const yen = n => (Math.round(Number(n)||0)).toLocaleString("ja-JP");
@@ -762,25 +768,29 @@ function computeMonth(){
       report: ov.report ?? false,
       shoken: ov.shoken ?? (!!p.firstDate && p.firstDate.slice(0,7)===S.month),
       visit: p.visit || "訪問",
+      meisai: ov.meisai ?? (p.meisai ?? true),
+      hokengai: Number(ov.hokengai)||0,
     };
     const j = opt.jutsu==="2" ? 1 : 0; const jl = opt.jutsu==="2" ? "2術" : "1術";
-    const lines=[]; const add=(key,label,unit,count)=>{ if(count>0) lines.push({key,label,unit,count,amount:unit*count}); };
+    const lines=[]; const add=(key,label,unit,count,half=false)=>{ if(count>0) lines.push({key,label:half?label+"（16回目以降・半額）":label,unit,count,amount:unit*count,half}); };
+    const halfOn = F.half16!=="0";
+    const tally={}; const bump=(k,unit,half)=>{ const kk=k+(half?"_h":""); (tally[kk]=tally[kk]||{k,unit,half,c:0}).c++; };
+    o.days.forEach((d,idx)=>{
+      const half = halfOn && idx>=15; const hf = v => half ? Math.floor(v/2) : v;
+      if(opt.visit==="通所") bump("sejutsu", hf(F.sejutsu[j]), half);
+      else { const tier = d.n<=1?1:d.n===2?2:d.n<10?3:d.n<20?4:5; bump("h"+tier, hf(F["houmon"+tier][j]), half); }
+      if(opt.denryo) bump("denryo", hf(F.denryo), half);
+      if(opt.tokubetsu) bump("tokubetsu", F.tokubetsu, false);
+    });
     if(opt.shoken) add("shoken",`初検料（${jl}）`, F.shoken[j], 1);
-    if(opt.visit==="通所") add("sejutsu",`施術料（${jl}）`, F.sejutsu[j], o.days.length);
-    else {
-      const t={1:0,2:0,3:0,4:0}; o.days.forEach(d=>{ t[d.n<=1?1:d.n===2?2:d.n<10?3:4]++; });
-      add("h1",`訪問施術料1（1人・${jl}）`,F.houmon1[j],t[1]);
-      add("h2",`訪問施術料2（2人・${jl}）`,F.houmon2[j],t[2]);
-      add("h3",`訪問施術料3（3〜9人・${jl}）`,F.houmon3[j],t[3]);
-      add("h4",`訪問施術料3（10人以上・${jl}）`,F.houmon3b[j],t[4]);
-    }
-    if(opt.denryo) add("denryo","電療料",F.denryo,o.days.length);
-    if(opt.tokubetsu) add("tokubetsu","特別地域加算",F.tokubetsu,o.days.length);
+    const lbl = k => k==="sejutsu"?`施術料・通所（${jl}）`: k[0]==="h"?`${HOUMON_LABEL[k[1]]}・${jl}`: k==="denryo"?"電療料":"特別地域加算";
+    ["sejutsu","h1","h2","h3","h4","h5","denryo","tokubetsu"].forEach(k=>{ [false,true].forEach(h=>{ const t=tally[k+(h?"_h":"")]; if(t) add(k,lbl(k),t.unit,t.c,h); }); });
+    if(opt.meisai && o.days.length) add("meisai","明細書発行加算",F.meisai,1);
     if(opt.report) add("report","施術報告書交付料",F.report,1);
     o.total = lines.reduce((a,l)=>a+l.amount,0);
     const rate = (p.burden===undefined||p.burden==="") ? 0.1 : Number(p.burden)/10;
     let b = o.total*rate; b = F.rounding==="10" ? Math.round(b/10)*10 : Math.floor(b);
-    o.opt=opt; o.lines=lines; o.burden=b; o.claim=o.total-b;
+    o.opt=opt; o.lines=lines; o.burden=b; o.claim=o.total-b; o.hokengai=opt.hokengai; o.selfTotal=b+opt.hokengai;
     o.staffId = Object.entries(o.staffDays).sort((a,b)=>b[1]-a[1])[0]?.[0];
     o.storeId = storeOfStaff(o.staffId);
     o.missing = [["insurerNo","保険者番号"],["bango","記号・番号"],["burden","負担割合"],["birth","生年月日"],["disease","傷病名"],["consentDoctor","同意医師"],["consentDate","同意日"]].filter(([k])=>!p[k]).map(x=>x[1]);
@@ -838,6 +848,8 @@ function receiptView(){
   const shown = list.filter(o=> f==="all" || (o.storeId||"")===f);
   const tot = shown.reduce((a,o)=>({t:a.t+o.total,b:a.b+o.burden,c:a.c+o.claim}),{t:0,b:0,c:0});
   const confirmed = shown.filter(o=>o.saved && !o.changed).length;
+  S.rcSel = S.rcSel || new Set(); const shownIds=new Set(shown.map(o=>o.pid)); [...S.rcSel].forEach(id=>{ if(!shownIds.has(id)) S.rcSel.delete(id); });
+  const selCount = S.rcSel.size; const allSel = shown.length && selCount===shown.length;
   const sel = `<select class="inp" id="rcStore"><option value="all">全店舗</option>${stores.map(s=>`<option value="${s.id}" ${f===s.id?"selected":""}>${esc(s.name)}</option>`).join("")}<option value="" ${f===""?"selected":""}>店舗未設定</option></select>`;
   return `${monthBar(sel)}
   <div class="stats">
@@ -849,19 +861,31 @@ function receiptView(){
     <div class="row" style="justify-content:space-between">
       <div class="muted">施術者の報告から自動で計算しています。内容を確認したら「確定」→「印刷する」の順に進めてください。</div>
       <div class="row"><button class="btn" data-rcconfirm="1" ${shown.length?"":"disabled"}>${shown.length&&confirmed===shown.length?"確定し直す":"この内容で確定"}</button>
-      <button class="btn pri" data-rcprint="all" ${shown.length?"":"disabled"}>印刷する</button></div>
+      <button class="btn" data-rcprint="all" ${shown.length?"":"disabled"}>レセプトを印刷</button></div>
     </div>
   </section>
+  <section class="card">
+    <h2>利用者への請求（領収書・明細書）</h2>
+    <div class="row" style="gap:12px">
+      <label class="muted" style="font-size:13px">発行日 <input class="inp" type="date" id="slipDate" value="${esc(S.slipDate||ymd(new Date()))}" style="padding:6px 10px"></label>
+      <select class="inp" id="slipKind" style="padding:6px 10px"><option value="both" ${S.slipKind!=="receipt"&&S.slipKind!=="detail"?"selected":""}>領収書＋明細書</option><option value="receipt" ${S.slipKind==="receipt"?"selected":""}>領収書のみ</option><option value="detail" ${S.slipKind==="detail"?"selected":""}>明細書のみ</option></select>
+      <span style="flex:1"></span>
+      <button class="btn pri" data-slipprint="sel" ${selCount?"":"disabled"}>チェックした人を印刷（${selCount}名）</button>
+      <button class="btn" data-slipprint="all" ${shown.length?"":"disabled"}>表示中の全員を一括印刷（${shown.length}名）</button>
+    </div>
+    <p class="muted" style="font-size:12px;margin:8px 0 0">下の一覧で、印刷したい人にチェックを入れてください。金額はレセプトと同じ計算です（保険外の金額は「算定」で入力できます）。</p>
+  </section>
   ${!S.monthLoaded?`<div class="empty">読み込み中…</div>`: shown.length? `<section class="card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table class="rc">
-    <thead><tr><th style="text-align:left">患者名</th><th>施設</th><th>日数</th><th>療養費</th><th>負担</th><th>請求額</th><th>状態</th><th></th></tr></thead>
+    <thead><tr><th style="width:40px"><input type="checkbox" id="rcSelAll" ${allSel?"checked":""} aria-label="全員を選択" style="width:18px;height:18px"></th><th style="text-align:left">患者名</th><th>施設</th><th>日数</th><th>療養費</th><th>負担</th><th>請求額</th><th>状態</th><th></th></tr></thead>
     <tbody>${shown.map(o=>`<tr>
+      <td style="text-align:center"><input type="checkbox" data-rcsel="${o.pid}" ${S.rcSel.has(o.pid)?"checked":""} aria-label="${esc(o.p.name)}を選択" style="width:18px;height:18px"></td>
       <td style="text-align:left"><b>${esc(o.p.name)}</b><div class="muted" style="font-size:11px">${esc(storeName(o.storeId))}・${esc(memberName(o.staffId))}</div></td>
-      <td>${esc(facName(o.fid))}</td><td>${o.days.length}</td><td>${yen(o.total)}</td><td>${o.p.burden?esc(o.p.burden)+"割":"1割?"}<div class="muted" style="font-size:11px">${yen(o.burden)}</div></td><td><b>${yen(o.claim)}</b></td>
+      <td>${esc(facName(o.fid))}</td><td>${o.days.length}</td><td>${yen(o.total)}</td><td>${o.p.burden?esc(o.p.burden)+"割":"1割?"}<div class="muted" style="font-size:11px">${yen(o.burden)}${o.hokengai?`＋保険外${yen(o.hokengai)}`:""}</div></td><td><b>${yen(o.claim)}</b></td>
       <td>${o.missing.length?`<span class="badge warn" title="${esc(o.missing.join("・"))}">保険情報 未入力${o.missing.length}</span>`:o.saved&&!o.changed?`<span class="badge ok">確定</span>`:o.changed?`<span class="badge warn">要再確定</span>`:`<span class="badge info">未確定</span>`}</td>
       <td style="white-space:nowrap"><button class="btn sm ghost" data-rcedit="${o.pid}">算定</button> <button class="btn sm ghost" data-editpt="${o.pid}">保険</button> <button class="btn sm" data-rcpreview="${o.pid}">見る</button></td>
     </tr>`).join("")}</tbody></table></div></section>`
   : `<div class="empty">${jpMonth(S.month)}の報告はまだありません。</div>`}
-  <div class="legend">料金は設定 ▸ 料金表の額で計算しています（初期値：令和6年10月改定）。訪問施術料は、同じ日に同じ施設で施術した人数で自動判定します。</div>`;
+  <div class="legend">料金は設定 ▸ 料金表の額で計算しています（初期値：令和8年度改定）。訪問施術料は、同じ日に同じ施設で施術した人数（1人／2人／3〜9人／10〜19人／20人以上）で自動判定し、月16回目以降は半額で計算します。</div>`;
 }
 async function confirmReceipts(){
   const list = computeMonth().filter(o=> (S.rcStore??"all")==="all" || (o.storeId||"")===S.rcStore);
@@ -886,9 +910,11 @@ async function editReceiptOpts(pid){
     <label class="ck"><input type="checkbox" name="denryo" ${o.opt.denryo?"checked":""}> 電療料を算定する</label>
     <label class="ck"><input type="checkbox" name="tokubetsu" ${o.opt.tokubetsu?"checked":""}> 特別地域加算を算定する</label>
     <label class="ck"><input type="checkbox" name="report" ${o.opt.report?"checked":""}> 施術報告書交付料を算定する</label>
+    <label class="ck"><input type="checkbox" name="meisai" ${o.opt.meisai?"checked":""}> 明細書発行加算を算定する</label>
+    <label class="f">保険外（自費）の金額（円）</label><input class="inp" name="hokengai" inputmode="numeric" value="${o.opt.hokengai||""}" placeholder="0" style="width:100%">
     <p class="muted" style="font-size:12px">この月だけの設定です。毎月同じにしたい項目は「保険」から患者情報で設定してください。</p>`, "保存");
   if(!v) return;
-  const opts = {jutsu:v.jutsu, shoken:!!v.shoken, denryo:!!v.denryo, tokubetsu:!!v.tokubetsu, report:!!v.report};
+  const opts = {jutsu:v.jutsu, shoken:!!v.shoken, denryo:!!v.denryo, tokubetsu:!!v.tokubetsu, report:!!v.report, meisai:!!v.meisai, hokengai:Number(String(v.hokengai||"").replace(/[^\d]/g,""))||0};
   const ref = S.db.collection("receipts").doc(`${pid}_${S.month}`);
   const cur = S.receipts[`${pid}_${S.month}`];
   await safeWrite(()=>ref.set({...(cur||{month:S.month, patientId:pid}), opts}), "算定内容を保存しました");
@@ -967,9 +993,20 @@ async function printReceipts(pids){
 <body><div class="bar">${jpMonth(S.month)}　レセプト ${list.length}枚 <button onclick="print()">印刷する</button></div>
 ${list.map(receiptSheet).join("\n")}
 <script>window.addEventListener("load",()=>setTimeout(()=>{try{print()}catch(e){}},400));<\/script></body></html>`;
-  const url = URL.createObjectURL(new Blob([html],{type:"text/html"}));
-  const w = window.open(url, "_blank");
-  if(!w){ saveFile(`レセプト_${S.month}${pids&&pids.length===1?"_"+list[0].p.name:""}.html`, html, "text/html"); toast("ファイルを保存しました。開くと印刷画面が出ます"); }
+  showDoc(html);
+}
+function showDoc(html, fname){
+  const w = (()=>{ try{ return window.open(URL.createObjectURL(new Blob([html],{type:"text/html"})), "_blank"); }catch(e){ return null; } })();
+  if(w) return;
+  const bg=document.createElement("div"); bg.className="modal-bg"; bg.style.zIndex=9999;
+  bg.innerHTML=`<div class="modal" style="max-width:900px;width:96vw;height:94vh;padding:10px;display:flex;flex-direction:column">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>印刷プレビュー</b><div class="row"><button class="btn sm pri" data-dp="1">印刷する</button><button class="btn sm ghost" data-dp="0">閉じる</button></div></div>
+    <iframe style="flex:1;border:1px solid #ccd;border-radius:8px;background:#eee"></iframe></div>`;
+  document.body.appendChild(bg);
+  const fr=bg.querySelector("iframe"); fr.srcdoc=html.replace(/<script>window\.addEventListener\("load"[\s\S]*?<\/script>/,"");
+  bg.addEventListener("click",e=>{ const b=e.target.closest("[data-dp]"); if(!b && e.target!==bg) return;
+    if(b && b.dataset.dp==="1"){ try{ fr.contentWindow.print(); }catch(err){ toast("この画面では印刷できません（本番アプリでは印刷できます）"); } return; }
+    bg.remove(); });
 }
 function previewReceipt(pid){
   const o = computeMonth().find(x=>x.pid===pid); if(!o) return;
@@ -981,6 +1018,138 @@ function previewReceipt(pid){
   document.body.appendChild(bg);
   bg.addEventListener("click",e=>{ const b=e.target.closest("[data-pp]"); if(e.target===bg||b?.dataset.pp==="0") bg.remove(); if(b?.dataset.pp==="1"){ bg.remove(); printReceipts([pid]); } });
 }
+
+
+/* ----- 利用者向け 月次領収書・領収書兼明細書 ----- */
+function warekiPad(sv){
+  const d=parseYmd(sv.length===7?sv+"-01":sv); const y=d.getFullYear()-2018;
+  return {y:String(y).padStart(2,"0"), m:String(d.getMonth()+1).padStart(2,"0"), d:String(d.getDate()).padStart(2,"0")};
+}
+function slipIssuer(o){
+  const st=S.stores?.[o.storeId]||{};
+  return { clinic: st.clinicName || ("あざらし訪問鍼灸　"+(st.name||"")), address: st.address||"", name: st.repName || st.managerName || memberName(o.staffId), phone: st.phone||"" };
+}
+const slipDays = o => o.days.map(d=>d.date.slice(8,10)+"日").join("　");
+function slipReceipt(o, issue){
+  const m=warekiPad(S.month), iss=warekiPad(issue), is=slipIssuer(o);
+  const hg = o.hokengai ? yen(o.hokengai) : "";
+  return `<div class="slip">
+  <div class="sl-title">月次領収書<small>（はり・きゅう）</small></div>
+  <div class="sl-name">${esc(o.p.name)}　様</div>
+  <p class="sl-month">令和 ${m.y}年${m.m}月 施術分</p>
+  <table class="sl-amt">
+    <tr><td class="l">保険分合計</td><td class="r">${yen(o.total)}　円</td></tr>
+    <tr class="tb"><td class="l">①一部負担金</td><td class="r">${yen(o.burden)}　円</td></tr>
+    <tr class="mb"><td class="l">②保険外</td><td class="r">${hg}　円</td></tr>
+    <tr class="bb"><td class="l">合計金額（①+②）</td><td class="r">${yen(o.selfTotal)}　円</td></tr>
+  </table>
+  <p class="sl-days">施術日：${slipDays(o)}</p>
+  <p class="sl-date">令和 ${iss.y}年${iss.m}月${iss.d}日</p>
+  <p class="sl-msg">上記合計金額を領収いたしました。</p>
+  <table class="sl-issuer">
+    <tr><td class="k">住所</td><td>${esc(is.address)}</td></tr>
+    <tr><td class="k">施術所名</td><td>${esc(is.clinic)}</td></tr>
+    <tr><td class="k">氏名</td><td class="nm">${esc(is.name)}</td></tr>
+    <tr><td class="k">電話</td><td>${esc(is.phone)}</td></tr>
+  </table>
+</div>`;
+}
+function slipDetail(o, issue){
+  const m=warekiPad(S.month), iss=warekiPad(issue), is=slipIssuer(o);
+  const nd=daysIn(S.month);
+  const sum = k => o.lines.filter(l=>l.key===k).reduce((a,l)=>({c:a.c+l.count,y:a.y+l.amount}),{c:0,y:0});
+  const cell = k => { const v=sum(k); return `<td class="c">${v.c?v.c:""}　回</td><td class="y">${v.y?yen(v.y):""}　円</td>`; };
+  const jl = `<small>（1術 ${o.opt.jutsu!=="2"?"●":"○"}　2術 ${o.opt.jutsu==="2"?"●":"○"}）</small>`;
+  const rows = [
+    ["初検料","shoken",jl,true],
+    ["通所","sejutsu",jl],
+    ["訪問施術料1","h1",jl],["訪問施術料2","h2",jl],["訪問施術料3<small>（3人〜9人）</small>","h3",jl],["訪問施術料4<small>（10人〜19人）</small>","h4",jl],["訪問施術料5<small>（20人以上）</small>","h5",jl],
+    ["電療料","denryo",""],["特別地域加算","tokubetsu",""]];
+  const sejutsuRows = rows.slice(1).map((r,i)=>`<tr>${i===0?`<td class="grp2" rowspan="${rows.length-1}">施<br>術<br>料</td>`:""}<td class="lb">${r[0]}${r[2]?"<br>"+r[2]:""}</td>${cell(r[1])}</tr>`).join("");
+  return `<div class="slip">
+  <div class="sd-title">領収書兼明細書<br>（はり・きゅう（1か月分）用）</div>
+  <div class="sd-name">${esc(o.p.name)}　様</div>
+  <div class="sd-month">令和${m.y}年${m.m}月分</div>
+  <table class="sd"><colgroup><col style="width:8%"><col style="width:8%"><col style="width:38%"><col style="width:20%"><col style="width:26%"></colgroup>
+    <tr><td class="hd" colspan="3">施術日</td><td class="days" colspan="2">${slipDays(o)}</td></tr>
+    <tr><td class="grp" rowspan="${rows.length}">施<br>術<br>内<br>容<br>欄</td><td class="lb wide" colspan="2">初検料 ${jl}</td>${cell("shoken")}</tr>
+    ${sejutsuRows.replace('<td class="grp2"','<td class="grp2"')}
+    <tr><td class="lb" colspan="3">明細書発行加算</td>${cell("meisai")}</tr>
+    <tr><td class="lb" colspan="3">往療料</td><td class="c">　回</td><td class="y">　円</td></tr>
+    <tr><td class="lb" colspan="3">施術報告書交付料</td>${cell("report")}</tr>
+    <tr class="tot"><td colspan="4" class="ctr">合　計</td><td class="y"><b>${yen(o.total)}</b>　円</td></tr>
+    <tr><td class="grp" rowspan="2" colspan="1">受領委任<br>の場合</td><td class="lb" colspan="3">一部負担金</td><td class="y">${yen(o.burden)}　円</td></tr>
+    <tr><td class="lb" colspan="3">保険請求額</td><td class="y">${yen(o.claim)}　円</td></tr>
+    <tr class="tb2"><td colspan="4" class="ctr">保険外</td><td class="y">${yen(o.hokengai)}　円</td></tr>
+    <tr class="tb2"><td colspan="4" class="ctr">保険外を含む合計金額</td><td class="y"><b>${yen(o.selfTotal)}</b>　円</td></tr>
+  </table>
+  <p class="sd-msg">上記合計金額を領収しました。<br>令和 ${iss.y}年${iss.m}月${iss.d}日</p>
+  <table class="sl-issuer sd-issuer">
+    <tr><td class="k">施術所名</td><td>${esc(is.clinic)}</td></tr>
+    <tr><td class="k">住所</td><td>${esc(is.address)}</td></tr>
+    <tr><td class="k">氏名</td><td class="nm">${esc(is.name)}</td></tr>
+    <tr><td class="k">電話</td><td>${esc(is.phone)}</td></tr>
+  </table>
+</div>`;
+}
+const SLIP_CSS = `
+.slip{width:182mm;min-height:257mm;margin:0 auto;padding:10mm 8mm;box-sizing:border-box;background:#fff;color:#111;font-family:"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;font-size:13px}
+.slip .sl-title{font-size:30px;letter-spacing:.2em;text-align:center;margin:10px 0 0}
+.slip .sl-title small{display:block;font-size:11px;letter-spacing:.1em}
+.slip .sl-name{font-size:24px;border-bottom:1px solid #111;width:60%;margin:36px auto 30px 6%;padding:0 0 4px 8px;letter-spacing:.1em}
+.slip .sl-month{margin:0 0 6px 12%;font-size:15px}
+.slip table{border-collapse:collapse}
+.slip .sl-amt{width:76%;margin:0 auto 0 12%}
+.slip .sl-amt td{border:1px solid #111;padding:6px 10px;font-size:15px}
+.slip .sl-amt td.l{text-align:center;width:50%}
+.slip .sl-amt td.r{text-align:right;font-size:20px;font-variant-numeric:tabular-nums}
+.slip .sl-amt tr.tb td{border-top:3px solid #111}
+.slip .sl-amt tr.tb td:first-child,.slip .sl-amt tr.mb td:first-child,.slip .sl-amt tr.bb td:first-child{border-left:3px solid #111}
+.slip .sl-amt tr.tb td:last-child,.slip .sl-amt tr.mb td:last-child,.slip .sl-amt tr.bb td:last-child{border-right:3px solid #111}
+.slip .sl-amt tr.bb td{border-top:3px double #111;border-bottom:3px solid #111}
+.slip .sl-days{font-size:10px;margin:8px 0 0 10%;color:#333}
+.slip .sl-date{margin:18px 0 0 12%;font-size:15px}
+.slip .sl-msg{margin:24px 0 0 18%;font-size:15px}
+.slip .sl-issuer{margin:44px 0 0 18%;font-size:14px}
+.slip .sl-issuer td{padding:8px 10px;vertical-align:baseline}
+.slip .sl-issuer td.k{font-size:14px;color:#222;white-space:nowrap}
+.slip .sl-issuer td.nm{font-size:20px;letter-spacing:.1em}
+.slip .sd-title{font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:22px;font-weight:700;text-align:center;line-height:1.35}
+.slip .sd-name{font-size:20px;border-bottom:1px solid #111;width:46%;margin:16px 0 8px;padding:0 0 2px 6px}
+.slip .sd-month{border:1px solid #111;display:inline-block;padding:4px 70px 4px 6px;font-size:16px;margin-bottom:8px}
+.slip table.sd{width:100%;font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:12px}
+.slip table.sd td{border:1px solid #111;padding:4px 6px;height:24px}
+.slip table.sd td.hd{font-size:15px;font-weight:700;text-align:center}
+.slip table.sd td.days{font-size:10px}
+.slip table.sd td.grp,.slip table.sd td.grp2{text-align:center;line-height:1.25;font-size:12px}
+.slip table.sd td.lb small{font-size:8px;color:#333}
+.slip table.sd td.c{text-align:right;font-size:14px}
+.slip table.sd td.y{text-align:right;width:110px;font-size:14px;font-variant-numeric:tabular-nums}
+.slip table.sd td.ctr{text-align:center}
+.slip table.sd tr.tot td{font-size:15px}
+.slip table.sd tr.tb2 td{border:2px solid #111;font-size:14px}
+.slip .sd-msg{margin:14px 0 0;font-size:13px;line-height:1.6}
+.slip .sd-issuer{margin:8px 0 0 8%;font-family:"Hiragino Sans","Noto Sans JP",sans-serif}
+.slip .sd-issuer td.k{font-weight:700}
+.slip .sd-issuer td.nm{font-size:16px}`;
+async function printSlips(mode){
+  const list = computeMonth().filter(o=> (S.rcStore??"all")==="all" || (o.storeId||"")===S.rcStore);
+  const target = mode==="sel" ? list.filter(o=>S.rcSel?.has(o.pid)) : list;
+  if(!target.length){ toast("印刷する人を選んでください"); return; }
+  if(mode==="all"){ const ok=await modal({title:`${target.length}名分をまとめて印刷しますか？`, body:"表示中の全員の領収書・明細書を作ります。", ok:"作る"}); if(!ok) return; }
+  const issue = S.slipDate || ymd(new Date()); const kind = S.slipKind || "both";
+  const pages = target.map(o=> (kind!=="detail"?slipReceipt(o,issue):"") + (kind!=="receipt"?slipDetail(o,issue):"")).join("\n");
+  const miss = target.filter(o=>!(S.stores?.[o.storeId]?.address)).length;
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>領収書・明細書 ${jpMonth(S.month)}</title>
+<style>@page{size:A4;margin:10mm}body{margin:0;background:#eee}.slip{margin:10px auto;box-shadow:0 0 4px #aaa}@media print{body{background:#fff}.slip{margin:0;box-shadow:none;page-break-after:always}.bar{display:none}}
+.bar{position:sticky;top:0;background:#5a8bd8;color:#fff;padding:10px;text-align:center;font-family:sans-serif}.bar button{font-size:15px;padding:6px 18px;border-radius:8px;border:0;margin-left:10px;cursor:pointer}${SLIP_CSS}</style></head>
+<body><div class="bar">${jpMonth(S.month)}　領収書・明細書 ${target.length}名分 <button onclick="print()">印刷する</button></div>
+${pages}
+<script>window.addEventListener("load",()=>setTimeout(()=>{try{print()}catch(e){}},400));<\/script></body></html>`;
+  showDoc(html);
+  if(miss) setTimeout(()=>toast(`店舗の住所が未入力の人が${miss}名います（設定 ▸ 店舗）`),1500);
+}
+{ const st=document.createElement("style"); st.textContent=SLIP_CSS; document.head.appendChild(st); }
 
 /* ----- 売上・PL ----- */
 function plView(){
@@ -1045,12 +1214,13 @@ function settingsView(){
     const s=(k,l)=>`<tr><td>${l}</td><td colspan="2"><input class="inp fee" id="fee-${k}" data-fee="${k}" value="${F[k]}" inputmode="numeric"></td></tr>`;
     return nav + `<section class="card"><h2>はり・きゅう 料金表（円）</h2>
       <table class="rc"><thead><tr><th style="text-align:left">項目</th><th>1術</th><th>2術</th></tr></thead><tbody>
-      ${r("shoken","初検料")}${r("sejutsu","施術料（通所）")}${r("houmon1","訪問施術料1（1人）")}${r("houmon2","訪問施術料2（2人）")}${r("houmon3","訪問施術料3（3〜9人）")}${r("houmon3b","訪問施術料3（10人以上）")}
-      ${s("denryo","電療料（1回）")}${s("tokubetsu","特別地域加算（1回）")}${s("report","施術報告書交付料")}
+      ${r("shoken","初検料")}${r("sejutsu","施術料（通所）")}${r("houmon1","訪問施術料1（1人）")}${r("houmon2","訪問施術料2（2人）")}${r("houmon3","訪問施術料3（3〜9人）")}${r("houmon4","訪問施術料4（10〜19人）")}${r("houmon5","訪問施術料5（20人以上）")}
+      ${s("denryo","電療料（1回）")}${s("tokubetsu","特別地域加算（1回）")}${s("report","施術報告書交付料")}${s("meisai","明細書発行加算（月1回）")}
+      <tr><td>月16回目以降</td><td colspan="2"><select class="inp" data-fee="half16"><option value="1" ${F.half16!=="0"?"selected":""}>施術料・訪問施術料・電療料を半額</option><option value="0" ${F.half16==="0"?"selected":""}>半額にしない</option></select></td></tr>
       <tr><td>一部負担金の端数</td><td colspan="2"><select class="inp" data-fee="rounding"><option value="1" ${F.rounding==="1"?"selected":""}>1円単位（切り捨て）</option><option value="10" ${F.rounding==="10"?"selected":""}>10円単位（四捨五入）</option></select></td></tr>
       </tbody></table>
-      <div class="row" style="margin-top:12px"><button class="btn pri" id="saveFees">保存</button><button class="btn ghost" id="resetFees">初期値（令和6年改定）に戻す</button></div>
-      <p class="muted" style="font-size:12px">令和8年度の改定（案）では、初検料・施術料・訪問施術料の引き上げと、訪問施術料4・5の新設、月16回目以降の減額が予定されています。実施されたら、ここで金額を書き換えてください。</p></section>`;
+      <div class="row" style="margin-top:12px"><button class="btn pri" id="saveFees">保存</button><button class="btn ghost" id="resetFees">初期値（令和8年度改定）に戻す</button></div>
+      <p class="muted" style="font-size:12px">初期値は令和8年度改定の額です。料金改定があったら、ここで金額を書き換えて保存してください。</p></section>`;
   }
   const stores = storeList();
   return nav + `<section class="card"><h2>店舗（${stores.length}）</h2>
@@ -1068,6 +1238,7 @@ async function editStore(id){
     <label class="f">管理者（施術者）の名前</label><input class="inp w" name="managerName" value="${esc(s.managerName||"")}" list="memlist" placeholder="例：坂本"><datalist id="memlist">${mem.map(m=>`<option value="${esc(m.name)}">`).join("")}</datalist>
     <label class="f">施術所の名称（レセプト用）</label><input class="inp w" name="clinicName" value="${esc(s.clinicName||"")}" placeholder="例：あざらし鍼灸院 本店">
     <label class="f">所在地</label><input class="inp w" name="address" value="${esc(s.address||"")}">
+    <label class="f">領収書に載せる氏名（代表者・管理者）</label><input class="inp w" name="repName" value="${esc(s.repName||"")}" placeholder="空欄なら管理者の名前">
     <label class="f">電話番号</label><input class="inp w" name="phone" value="${esc(s.phone||"")}" inputmode="tel">
     <label class="f">受領委任の登録記号番号</label><input class="inp w" name="regNo" value="${esc(s.regNo||"")}">
     ${id?`<button type="button" class="btn sm danger" data-delstore="${id}" style="margin-top:14px">この店舗を削除</button>`:""}`, "保存");
@@ -1369,6 +1540,7 @@ document.addEventListener("click", async e=>{
   if(ds.receive){ receiveStaff(ds.receive); return; }
   if(ds.viewstaff){ S.monthStaff=ds.viewstaff; S.tab="month"; render(); window.scrollTo(0,0); return; }
   if(ds.rcconfirm){ confirmReceipts(); return; }
+  if(ds.slipprint){ printSlips(ds.slipprint); return; }
   if(ds.rcprint){ printReceipts(null); return; }
   if(ds.rcedit){ editReceiptOpts(ds.rcedit); return; }
   if(ds.rcpreview){ previewReceipt(ds.rcpreview); return; }
@@ -1376,10 +1548,10 @@ document.addEventListener("click", async e=>{
   if(ds.settab){ S.setTab=ds.settab; render(); return; }
   if(ds.editstore!==undefined){ editStore(ds.editstore); return; }
   if(t.id==="saveFees"){
-    const f={}; document.querySelectorAll("[data-fee]").forEach(i=>{ const [k,idx]=i.dataset.fee.split("."); if(k==="rounding"){ f.rounding=i.value; return; } const n=Number(String(i.value).replace(/[^\d]/g,""))||0; if(idx!==undefined){ (f[k]=f[k]||[0,0])[Number(idx)]=n; } else f[k]=n; });
-    await safeWrite(()=>S.db.doc("settings/fees").set(f), "料金表を保存しました"); return;
+    const f={}; document.querySelectorAll("[data-fee]").forEach(i=>{ const [k,idx]=i.dataset.fee.split("."); if(k==="rounding"||k==="half16"){ f[k]=i.value; return; } const n=Number(String(i.value).replace(/[^\d]/g,""))||0; if(idx!==undefined){ (f[k]=f[k]||[0,0])[Number(idx)]=n; } else f[k]=n; });
+    f.version="R8"; await safeWrite(()=>S.db.doc("settings/fees").set(f), "料金表を保存しました"); return;
   }
-  if(t.id==="resetFees"){ const ok=await modal({title:"料金表を初期値に戻しますか？", body:"令和6年10月改定の額に戻ります。", ok:"戻す"}); if(!ok) return; await safeWrite(()=>S.db.doc("settings/fees").set({...DEFAULT_FEES}), "初期値に戻しました"); return; }
+  if(t.id==="resetFees"){ const ok=await modal({title:"料金表を初期値に戻しますか？", body:"令和8年度改定の額に戻ります。", ok:"戻す"}); if(!ok) return; await safeWrite(()=>S.db.doc("settings/fees").set({...DEFAULT_FEES}), "初期値に戻しました"); return; }
 
   // month
   if(ds.month){ S.month=addMonth(S.month, Number(ds.month)); render(); return; }
@@ -1431,6 +1603,10 @@ document.addEventListener("change", async e=>{
   const t=e.target;
   if(t.id==="restoreFile" && t.files?.[0]){ const f=t.files[0]; t.value=""; importBackup(f); return; }
   if(t.id==="slStore"){ S.slStore=t.value; render(); return; }
+  if(t.dataset?.rcsel){ S.rcSel=S.rcSel||new Set(); t.checked?S.rcSel.add(t.dataset.rcsel):S.rcSel.delete(t.dataset.rcsel); render(); return; }
+  if(t.id==="rcSelAll"){ const list=computeMonth().filter(o=>(S.rcStore??"all")==="all"||(o.storeId||"")===S.rcStore); S.rcSel=new Set(t.checked?list.map(o=>o.pid):[]); render(); return; }
+  if(t.id==="slipDate"){ S.slipDate=t.value; return; }
+  if(t.id==="slipKind"){ S.slipKind=t.value; return; }
   if(t.id==="rcStore"){ S.rcStore=t.value; render(); return; }
   if(t.dataset.memstore!==undefined){ await safeWrite(()=>S.db.collection("members").doc(t.dataset.memstore).update({storeId:t.value}), "店舗を設定しました"); return; }
   if(t.id==="monthStaff"){ S.monthStaff=t.value; render(); return; }

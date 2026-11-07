@@ -22,6 +22,13 @@ input,select{font:inherit}
 .fm-head h3{margin:0;min-width:0}
 .fm-acts{display:flex;gap:8px;flex:none}
 .fm-body{flex:1 1 auto;min-height:0;overflow:auto;padding:14px 18px;-webkit-overflow-scrolling:touch}
+/* 左右にずれないよう、横方向のスクロールを止めて、中の欄を画面幅に収める（iPhoneの日付欄などが広がる対策） */
+.fm-body{overflow-x:hidden}
+.fm-body input,.fm-body select,.fm-body textarea{max-width:100%;min-width:0}
+.fm-body input[type=date]{-webkit-appearance:none;appearance:none;width:100%}
+.fm-body .row{flex-wrap:wrap}
+/* 最下部に空白を入れ、一番下の項目がブラウザの下部バーに隠れないようにする */
+.fm-body::after{content:"";display:block;height:120px}
 .modal.fm .acts{flex:none;margin:0;padding:10px 18px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #eef1f6;background:#fff}
 @media (max-width:560px){
   .modal-bg.fm-bg{padding:0;place-items:stretch}

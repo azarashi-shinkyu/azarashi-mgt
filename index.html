@@ -1983,7 +1983,7 @@ function bindFacFormatters(form){
 function formModal(title, html, ok="保存", wide=false){
   return new Promise(res=>{
     const bg=document.createElement("div"); bg.className="modal-bg";
-    bg.innerHTML=`<form class="modal" style="max-width:${wide?640:440}px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto"><h3>${esc(title)}</h3>${html}
+    bg.innerHTML=`<form class="modal" style="max-width:${wide?640:440}px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto"><div style="position:sticky;top:-18px;z-index:3;background:#fff;margin:-18px -18px 10px;padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #eef1f6"><h3 style="margin:0">${esc(title)}</h3><button type="submit" class="btn pri sm" style="flex:none">${esc(ok)}</button></div>${html}
       <div class="acts"><button type="button" class="btn ghost" data-x="0">キャンセル</button><button type="submit" class="btn pri">${esc(ok)}</button></div></form>`;
     document.body.appendChild(bg);
     const form=bg.querySelector("form");

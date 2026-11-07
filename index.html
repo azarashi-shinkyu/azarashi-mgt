@@ -1071,8 +1071,7 @@ ${list.map(receiptSheet).join("\n")}
   showDoc(html);
 }
 function showDoc(html, fname){
-  const w = (()=>{ try{ return window.open(URL.createObjectURL(new Blob([html],{type:"text/html"})), "_blank"); }catch(e){ return null; } })();
-  if(w) return;
+  // 別ウィンドウは使わず、画面内のプレビューで開く（ブラウザによって別ウィンドウが開かず反応しないため）
   const bg=document.createElement("div"); bg.className="modal-bg"; bg.style.zIndex=9999;
   bg.innerHTML=`<div class="modal" style="max-width:900px;width:96vw;height:94vh;padding:10px;display:flex;flex-direction:column">
     <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>印刷プレビュー</b><div class="row"><button class="btn sm pri" data-dp="1">印刷する</button><button class="btn sm ghost" data-dp="0">閉じる</button></div></div>

@@ -19,7 +19,8 @@ input,select{font:inherit}
 /* 入力画面（formModal）：上のタイトル・保存と下のボタンは固定、中身だけスクロール */
 .modal.fm{display:flex;flex-direction:column;padding:0;overflow:hidden;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px)}
 .fm-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 18px 10px;border-bottom:1px solid #eef1f6}
-.fm-head h3{margin:0}
+.fm-head h3{margin:0;min-width:0}
+.fm-acts{display:flex;gap:8px;flex:none}
 .fm-body{flex:1 1 auto;min-height:0;overflow:auto;padding:14px 18px;-webkit-overflow-scrolling:touch}
 .modal.fm .acts{flex:none;margin:0;padding:10px 18px calc(10px + env(safe-area-inset-bottom));border-top:1px solid #eef1f6;background:#fff}
 @media (max-width:560px){
@@ -1311,17 +1312,14 @@ function compressImg(file){
 }
 async function openRenewForm(pid){
   const p=S.patients[pid]; if(!p) return;
-  const bg=document.createElement("div"); bg.className="modal-bg"; bg.style.zIndex=9000;
-  bg.innerHTML=`<div class="modal" style="max-width:480px;width:94vw;max-height:90vh;overflow:auto;padding:14px">
-    <h3 style="margin:0 0 8px">同意書の更新　${esc(p.name)}</h3>
+  const bg=document.createElement("div"); bg.className="modal-bg fm-bg"; bg.style.zIndex=9000;
+  bg.innerHTML=`<div class="modal fm" style="max-width:480px"><div class="fm-head"><h3>同意書の更新　${esc(p.name)}</h3><div class="fm-acts"><button class="btn ghost sm" data-rx="close">戻る</button><button class="btn pri sm" data-rx="ok">確定</button></div></div><div class="fm-body">
     <label class="f">新しい期限 *</label>
     <input class="inp w" type="date" data-r="expiry">
     <label class="f" style="margin-top:10px">同意書の写真（原本の写真）*</label>
     <input class="inp w" type="file" accept="image/*" capture="environment" data-r="file">
     <img data-r="prev" style="display:none;max-width:100%;margin-top:8px;border:1px solid #ccd;border-radius:8px">
-    <div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px">
-      <button class="btn sm ghost" data-rx="close">閉じる</button>
-      <button class="btn sm pri" data-rx="ok">確定</button></div></div>`;
+    </div></div>`;
   document.body.appendChild(bg);
   const fileIn=bg.querySelector('[data-r="file"]'), prev=bg.querySelector('[data-r="prev"]');
   fileIn.addEventListener("change", ()=>{ const f=fileIn.files[0]; if(!f) return; prev.src=URL.createObjectURL(f); prev.style.display="block"; });
@@ -1390,10 +1388,9 @@ async function openConsentForm(pid, opts={}){
   const p=S.patients[pid]; if(!p) return;
   const c=p.consent||{};
   const diseases = c.diseases || [];
-  const bg=document.createElement("div"); bg.className="modal-bg"; bg.style.zIndex=9000;
+  const bg=document.createElement("div"); bg.className="modal-bg fm-bg"; bg.style.zIndex=9000;
   const facTxt = p.facilityId && p.facilityId!==HOME_ID ? facName(p.facilityId) : "";
-  bg.innerHTML=`<div class="modal" style="max-width:520px;width:94vw;max-height:90vh;overflow:auto;padding:14px">
-    <h3 style="margin:0 0 8px">${esc(p.name)}${facTxt?`<span class="muted" style="font-size:13px;margin-left:8px">${esc(facTxt)}</span>`:""}</h3>
+  bg.innerHTML=`<div class="modal fm" style="max-width:520px"><div class="fm-head"><h3>${esc(p.name)}${facTxt?`<span class="muted" style="font-size:13px;margin-left:8px">${esc(facTxt)}</span>`:""}</h3><div class="fm-acts"><button class="btn ghost sm" data-cx="close">戻る</button><button class="btn pri sm" data-cx="print">印刷</button></div></div><div class="fm-body">
     <label class="f">同意区分</label>
     <div class="row" style="gap:16px">
       <label><input type="radio" name="kind" value="初回の同意"> 初回の同意</label>
@@ -1410,9 +1407,6 @@ async function openConsentForm(pid, opts={}){
     <input class="inp w" type="date" data-c="onset" value="${esc(c.onset||"")}" style="margin-top:4px" oninput="if(this.value){const u=this.closest('.modal')?.querySelector('[data-c=unk]'); if(u) u.checked=false;}">
     <label class="f" style="margin-top:10px">注意事項等（任意）</label>
     <textarea class="inp w" rows="3" data-c="note">${esc(c.note||"")}</textarea>
-    <div class="row" style="justify-content:flex-end;margin-top:12px;gap:8px">
-      <button class="btn sm ghost" data-cx="close">閉じる</button>
-      <button class="btn sm pri" data-cx="print">印刷</button>
     </div></div>`;
   document.body.appendChild(bg);
   bg.addEventListener("click", async e=>{
@@ -1993,8 +1987,7 @@ function bindFacFormatters(form){
 function formModal(title, html, ok="保存", wide=false){
   return new Promise(res=>{
     const bg=document.createElement("div"); bg.className="modal-bg fm-bg";
-    bg.innerHTML=`<form class="modal fm" style="max-width:${wide?640:440}px"><div class="fm-head"><h3>${esc(title)}</h3><button type="submit" class="btn pri sm">${esc(ok)}</button></div><div class="fm-body">${html}</div>
-      <div class="acts"><button type="button" class="btn ghost" data-x="0">キャンセル</button><button type="submit" class="btn pri">${esc(ok)}</button></div></form>`;
+    bg.innerHTML=`<form class="modal fm" style="max-width:${wide?640:440}px"><div class="fm-head"><h3>${esc(title)}</h3><div class="fm-acts"><button type="button" class="btn ghost sm" data-x="0">戻る</button><button type="submit" class="btn pri sm">${esc(ok)}</button></div></div><div class="fm-body">${html}</div></form>`;
     document.body.appendChild(bg);
     const form=bg.querySelector("form");
     if(form.querySelector('[name="contactRole"]') || form.querySelector('[name="sei"]')) bindFacFormatters(form);

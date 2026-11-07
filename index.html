@@ -14,6 +14,8 @@
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI",system-ui,sans-serif;font-size:15px;-webkit-text-size-adjust:100%}
 button{font:inherit;cursor:pointer}
 input,select{font:inherit}
+/* iPhoneは16px未満の入力欄にフォーカスすると画面を拡大し、閉じても戻らない → スマホでは16px以上にする */
+@media (max-width:560px){input,select,textarea{font-size:16px !important}}
 .hdr{background:var(--blue);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20}
 .hdr .logo{width:46px;height:35px;border-radius:9px;background:#fff;display:grid;place-items:center;overflow:hidden;flex:none}
 .hdr .logo img{width:44px;height:auto;display:block}

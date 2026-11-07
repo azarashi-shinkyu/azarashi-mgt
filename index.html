@@ -133,7 +133,7 @@ label.f{display:block;font-size:13px;color:var(--sub);margin:12px 0 6px;text-ali
 .modal-bg{position:fixed;inset:0;background:rgba(20,30,50,.45);display:grid;place-items:center;z-index:60;padding:16px}
 .modal{background:#fff;border-radius:16px;padding:18px;max-width:420px;width:100%}
 .modal h3{margin:0 0 10px;font-size:16px}
-.modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;position:sticky;bottom:-18px;background:#fff;padding:10px 0 18px;margin-bottom:-18px}
 .legend{font-size:12px;color:var(--sub);margin-top:8px}
 table.rc,table.pl{border-collapse:collapse;width:100%;font-size:13px}
 table.rc th,table.rc td,table.pl th,table.pl td{border-bottom:1px solid var(--line);padding:8px 8px;text-align:right;white-space:nowrap}
@@ -1981,7 +1981,7 @@ function bindFacFormatters(form){
 function formModal(title, html, ok="保存", wide=false){
   return new Promise(res=>{
     const bg=document.createElement("div"); bg.className="modal-bg";
-    bg.innerHTML=`<form class="modal" style="max-width:${wide?640:440}px;max-height:92vh;overflow:auto"><h3>${esc(title)}</h3>${html}
+    bg.innerHTML=`<form class="modal" style="max-width:${wide?640:440}px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto"><h3>${esc(title)}</h3>${html}
       <div class="acts"><button type="button" class="btn ghost" data-x="0">キャンセル</button><button type="submit" class="btn pri">${esc(ok)}</button></div></form>`;
     document.body.appendChild(bg);
     const form=bg.querySelector("form");

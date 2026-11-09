@@ -11,6 +11,7 @@
   --ok:#1f8a5b; --ok-l:#e3f4ec; --warn:#b4541a; --warn-l:#fbeee4; --sun:#c0392b; --sat:#2a64c4;
 }
 *{box-sizing:border-box}
+*{touch-action:manipulation}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP","Yu Gothic UI",system-ui,sans-serif;font-size:15px;-webkit-text-size-adjust:100%}
 button{font:inherit;cursor:pointer}
 input,select{font:inherit}
@@ -21,6 +22,8 @@ input,select{font:inherit}
 .fm-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 18px 10px;border-bottom:1px solid #eef1f6}
 .fm-head h3{margin:0;min-width:0}
 .fm-acts{display:flex;gap:8px;flex:none}
+.ended-toggle{all:unset;cursor:pointer;color:var(--sub);font-size:13px;padding:6px 2px;white-space:nowrap}
+.ended-toggle:active{opacity:.6}
 .fm-body{flex:1 1 auto;min-height:0;overflow:auto;padding:14px 18px;-webkit-overflow-scrolling:touch}
 /* 左右にずれないよう、横方向のスクロールを止めて、中の欄を画面幅に収める（iPhoneの日付欄などが広がる対策） */
 .fm-body{overflow-x:hidden}
@@ -252,7 +255,9 @@ const isAdmin = () => isAdminId(S.uid);
 const facName = id => id===HOME_ID ? HOME_NAME : (S.facilities[id]?.name || "（削除された施設）");
 const facList = () => [{id:HOME_ID,name:HOME_NAME,order:-1}, ...Object.entries(S.facilities).map(([id,f])=>({id,...f}))
   .sort((a,b)=>(a.order??0)-(b.order??0) || a.name.localeCompare(b.name,"ja"))].filter((f,i)=>i===0||f.id!==HOME_ID);
-const patientsOf = fid => Object.entries(S.patients).map(([id,p])=>({id,...p})).filter(p=>p.facilityId===fid && p.active!==false)
+/* 契約中の患者（削除・契約終了・退所になった患者は含まない） */
+const isContracted = p => p.active!==false && !p.ended;
+const patientsOf = fid => Object.entries(S.patients).map(([id,p])=>({id,...p})).filter(p=>p.facilityId===fid && isContracted(p))
   .sort((a,b)=>yomi(a).localeCompare(yomi(b),"ja"));
 // 並び順用の読み（ふりがな優先、カタカナはひらがなに揃える）
 const yomi = p => (p.kana||p.name||"").normalize("NFKC").replace(/[\u30a1-\u30f6]/g, c=>String.fromCharCode(c.charCodeAt(0)-0x60));
@@ -698,30 +703,32 @@ function reportsView(embedded=false){
 /* ----- facilities & patients ----- */
 function patientsView(){
   const facs=facList();
-  if(!facs.some(f=>f.id===S.ptFac)) S.ptFac=HOME_ID;
+  if(S.ptFac===undefined || (S.ptFac && !facs.some(f=>f.id===S.ptFac))) S.ptFac=HOME_ID;
   const pts=patientsOf(S.ptFac);
+  const endedPts=Object.entries(S.patients).map(([id,p])=>({id,...p})).filter(p=>p.facilityId===S.ptFac && p.active!==false && p.ended);
+  const listHtml = S.showEnded
+    ? (endedPts.length ? `<ul class="list">${endedPts.map(p=>`<li><div class="grow" style="min-width:0"><b>${esc(p.name)}</b> <span class="muted">${p.endDate?esc(wareki(p.endDate)):""}</span></div><button class="btn sm" data-restorept="${p.id}">契約中に戻す</button></li>`).join("")}</ul>` : `<div class="empty">過去患者はいません</div>`)
+    : (pts.length ? `<ul class="list">${pts.map(p=>`<li style="gap:8px"><div class="grow" style="min-width:0"><b>${esc(p.name)}</b> ${p.kana?`<span class="muted">${esc(p.kana)}</span>`:""}</div>
+      <button class="btn sm" data-editpt="${p.id}">情報</button>
+      <button class="btn sm ghost" data-endpt="${p.id}">終了</button>
+      </li>`).join("")}</ul>`
+      : `<div class="empty">まだ患者が登録されていません。</div>`);
   return `
   <section class="card">
     <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 style="margin:0">施設（${facs.length-1}件）</h2><button class="btn sm pri" data-newfac="patients">＋ 施設を登録</button></div>
     <ul class="faclist">${facs.map(f=>facRow(f)).join("")}</ul>
     <div class="muted" style="margin-top:8px">施設名を押すと、下にその施設の患者が出ます。ご自宅で施術する患者は「居宅」に登録してください。</div>
   </section>
-  <section class="card">
+  ${S.ptFac===null?"":`<section class="card">
     <div class="row" style="justify-content:space-between;margin-bottom:8px">
-      <h2 style="margin:0">${esc(facName(S.ptFac))} の患者（${pts.length}名）</h2>
-      ${S.ptFac!==HOME_ID?`<button class="btn sm ghost" data-editfac="${S.ptFac}">施設の情報を編集</button>`:""}
+      <h2 style="margin:0">${esc(facName(S.ptFac))} の${S.showEnded?`過去患者（${endedPts.length}名）`:`患者（${pts.length}名）`}</h2>
+      
     </div>
-    <div class="row" style="margin-bottom:10px">
-      <input class="inp" id="newPt" placeholder="患者名（例：佐藤 一郎）" style="flex:2;min-width:160px">
-      <input class="inp" id="newPtKana" placeholder="フリガナ（並び順用・任意）" style="flex:1;min-width:140px">
-      <button class="btn pri" id="addPt">追加</button>
-    </div>
-    ${pts.length?`<ul class="list">${pts.map(p=>`<li><div class="grow"><b>${esc(p.name)}</b> ${p.kana?`<span class="muted">${esc(p.kana)}</span>`:""}</div>
-      <select class="inp" data-movept="${p.id}" style="padding:5px 8px;font-size:13px" aria-label="施設を移動">${facs.map(f=>`<option value="${f.id}" ${f.id===p.facilityId?"selected":""}>${esc(f.name)}</option>`).join("")}</select>
-      <button class="btn sm" data-editpt="${p.id}">情報</button>
-      <button class="btn sm danger" data-delpt="${p.id}">削除</button></li>`).join("")}</ul>`
-      : `<div class="empty">まだ患者が登録されていません。</div>`}
-  </section>`;
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px">${S.showEnded?"<span></span>":'<button class="btn sm pri" data-newpt="1">新患登録</button>'}${endedPts.length||S.showEnded?`<button class="btn sm pri" data-showended="1">${S.showEnded?"戻る":"過去患者"}</button>`:""}</div>
+    ${listHtml}
+
+  </section>`}
+  `;
 }
 
 const telHref = v => "tel:"+String(v||"").replace(/[^0-9+]/g,"");
@@ -729,7 +736,7 @@ const mapHref = v => "https://www.google.com/maps/search/?api=1&query="+encodeUR
 function facRow(f){
   const on=S.ptFac===f.id, n=patientsOf(f.id).length;
   const head = `<div class="fhead"><button class="fname" data-ptfac="${f.id}"><b>${esc(f.name)}</b></button><button class="cnt" data-ptfac="${f.id}">${n}名</button>${f.id!==HOME_ID?`<button class="btn sm ghost finfo" data-editfac="${f.id}">情報</button>`:`<span></span>`}</div>`;
-  if(f.id===HOME_ID) return `<li class="${on?"on":""}">${head}<div class="fdet"><button class="fsub" data-ptfac="${f.id}"><span class="muted">ご自宅で施術する患者</span></button></div></li>`;
+  if(f.id===HOME_ID) return `<li class="${on?"on":""}">${head}</li>`;
   const sub = [f.address?`📍 ${esc(f.address)}`:"", f.contact?`👤 ${esc(f.contact)}${f.contactRole?`（${esc(f.contactRole)}）`:""}`:""].filter(Boolean);
   const acts = [f.contactTel?`<a class="btn sm pri" href="${telHref(f.contactTel)}">📞 担当者</a>`:"", f.tel?`<a class="btn sm ${f.contactTel?"":"pri"}" href="${telHref(f.tel)}">📞 施設</a>`:"", f.address?`<a class="btn sm ghost" href="${mapHref(f.address)}" target="_blank" rel="noopener">地図</a>`:""].filter(Boolean);
   return `<li class="${on?"on":""}">${head}
@@ -1346,7 +1353,7 @@ async function openRenewForm(pid){
 }
 function renewalWaitingHtml(){
   if(!isAdmin()) return "";
-  const items = Object.entries(S.patients||{}).filter(([id,p])=>p.active!==false && p.consent?.renewal?.status==="waiting")
+  const items = Object.entries(S.patients||{}).filter(([id,p])=>isContracted(p) && p.consent?.renewal?.status==="waiting")
     .map(([id,p])=>({id,p,r:p.consent.renewal})).sort((a,b)=>String(b.r.at).localeCompare(String(a.r.at)));
   if(!items.length) return "";
   return `<h3 style="margin:4px 0 8px">同意書の原本回収待ち（${items.length}名）</h3>
@@ -1377,7 +1384,7 @@ const consentEnd = p => { const x=p.consent?.expiry; if(x) return parseYmd(x); c
 const consentAlert = p => { const e=consentEnd(p); if(!e) return null; const t=new Date(); t.setHours(0,0,0,0);
   if(t>e) return {lv:"expired", e}; if(t>=addMonthsSafe(e,-1)) return {lv:"1m", e}; if(t>=addMonthsSafe(e,-2)) return {lv:"2m", e}; return null; };
 function consentAlertsHtml(){
-  const items = Object.entries(S.patients||{}).filter(([id,p])=>p.active!==false)
+  const items = Object.entries(S.patients||{}).filter(([id,p])=>isContracted(p))
     .map(([id,p])=>({id,p,a:consentAlert(p)})).filter(x=>x.a).sort((a,b)=>a.a.e-b.a.e);
   if(!items.length) return "";
   const col = {expired:"#c0392b", "1m":"#c0392b", "2m":"#b7950b"};
@@ -1795,8 +1802,9 @@ function wdToIso(v, name){
   if(dt.getFullYear()!==Y || dt.getMonth()!==M-1 || dt.getDate()!==D) return null;
   return `${Y}-${String(M).padStart(2,"0")}-${String(D).padStart(2,"0")}`;
 }
-async function editPatient(pid){
-  const p = S.patients[pid]; if(!p) return;
+async function editPatient(pid, opts={}){
+  const isNew = !!opts.isNew;
+  const p = isNew ? {facilityId:S.ptFac, active:true} : S.patients[pid]; if(!p) return;
   const sel=(name,opts,val)=>`<select class="inp w" name="${name}">${opts.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o];return `<option value="${esc(v)}" ${String(val??"")===String(v)?"selected":""}>${esc(l)}</option>`;}).join("")}</select>`;
   const inp=(name,ph="",type="text")=>`<input class="inp w" name="${name}" type="${type}" value="${esc(p[name]||"")}" placeholder="${ph}">`;
   const np = (p.name||"").trim().split(/\s+/);
@@ -1810,7 +1818,7 @@ async function editPatient(pid){
   const curCl = Object.values(S.clinics||{}).find(c=>c.name===p.consentHospital);
   const curDocs = curCl ? clinicDoctors(curCl) : (p.consentDoctor ? [p.consentDoctor] : []);
   const consentDocOptions = `<option value="">（未選択）</option>` + curDocs.map(d=>`<option value="${esc(d)}" ${d===(p.consentDoctor||"")?"selected":""}>${esc(d)}</option>`).join("");
-  const v = await formModal(`${p.name} さんの情報`, `
+  const v = await formModal(isNew ? "新患登録" : `${p.name} さんの情報`, `
     <div class="fgrid">
     <div><label class="f">姓 *</label><input class="inp w" name="sei" value="${esc(sei)}"></div>
     <div><label class="f">名 *</label><input class="inp w" name="mei" value="${esc(mei)}"></div>
@@ -1880,8 +1888,8 @@ async function editPatient(pid){
   /* 同意書の医療機関は「医療機関名」から決める（設定の医療機関の名前と一致するものを紐づける） */
   const clinicHit = Object.entries(S.clinics||{}).find(([,c])=>c.name && c.name===v.consentHospital);
   v.clinicId = clinicHit ? clinicHit[0] : "";
-  const doc = {...p, ...v, denryo:!!v.denryo, tokubetsu:!!v.tokubetsu, updatedBy:S.uid, updatedAt:new Date().toISOString()};
-  await safeWrite(()=>S.db.collection("patients").doc(pid).set(doc), "保存しました");
+  const doc = {...p, ...v, denryo:!!v.denryo, tokubetsu:!!v.tokubetsu, updatedBy:S.uid, updatedAt:new Date().toISOString(), ...(isNew?{createdBy:S.uid, active:true}:{})};
+  await safeWrite(()=>S.db.collection("patients").doc(pid).set(doc), isNew ? `${v.name} さんを登録しました` : "保存しました");
 }
 
 /* ----- 汎用フォームモーダル ----- */
@@ -2090,13 +2098,13 @@ async function editSale(id){
 
 
 /* ----- アカウント発行 ----- */
-const genPass = () => { const c="abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let p=""; const a=new Uint32Array(10); crypto.getRandomValues(a); a.forEach(x=>p+=c[x%c.length]); return p; };
+const genPass = () => { let p=""; const a=new Uint32Array(6); crypto.getRandomValues(a); a.forEach(x=>p+=String(x%10)); return p; };
 async function issueAccount(){
   const pw = genPass();
   const v = await formModal("アカウントを発行", `
     <label class="f">名前 *</label><input class="inp w" name="name" placeholder="例：坂本 隼人">
     <label class="f">メールアドレス（ログインID） *</label><input class="inp w" name="email" type="email" placeholder="例：sakamoto@example.com">
-    <label class="f">初期パスワード（10文字）</label><input class="inp w" name="password" value="${pw}" style="font-family:ui-monospace,monospace;letter-spacing:.05em">
+    <label class="f">初期パスワード（6桁の数字）</label><input class="inp w" name="password" value="${pw}" style="font-family:ui-monospace,monospace;letter-spacing:.05em">
     <div class="fgrid">
       <div><label class="f">役割</label><select class="inp w" name="role"><option value="staff">施術者</option>${S.isOwner?`<option value="admin">管理者</option>`:""}</select></div>
       <div><label class="f">店舗</label><select class="inp w" name="storeId"><option value="">未設定</option>${storeList().map(st=>`<option value="${st.id}">${esc(st.name)}</option>`).join("")}</select></div>
@@ -2104,7 +2112,7 @@ async function issueAccount(){
     <p class="muted" style="font-size:12px">発行後、このメールアドレスと初期パスワードを本人に伝えてください。本人はログイン後「パスワード再設定」で自分のパスワードに変えられます。</p>`, "発行する");
   if(!v) return;
   if(!v.name || !v.email){ toast("名前とメールアドレスを入力してください"); return; }
-  if((v.password||"").length<8){ toast("パスワードは8文字以上にしてください"); return; }
+  if(!/^[0-9]{6}$/.test(v.password||"")){ toast("パスワードは6桁の数字にしてください"); return; }
   let newUid;
   if(S.local){ newUid = "u-"+rid(); }
   else{
@@ -2272,24 +2280,30 @@ document.addEventListener("click", async e=>{
   if(ds.confirm){ toggleConfirm(ds.confirm); return; }
 
   // facilities / patients
-  if(ds.ptfac){ S.ptFac=ds.ptfac; render(); return; }
+  if(ds.ptfac){ S.ptFac = S.ptFac===ds.ptfac ? null : ds.ptfac; render(); return; }
   if(ds.newfac){ editFacility(null, ds.newfac); return; }
   if(ds.editfac){ editFacility(ds.editfac); return; }
-  if(t.id==="addPt"){
-    const name=($("#newPt").value||"").trim(); const kana=toHalfKana($("#newPtKana").value||"").trim();
-    if(!name){ toast("患者名を入力してください"); return; }
-    if(patientsOf(S.ptFac).some(p=>p.name===name)){ toast("この施設に同じ名前の患者がいます"); return; }
-    $("#newPt").value=""; $("#newPtKana").value=""; S._clear=new Set(["newPt","newPtKana"]);
-    await safeWrite(()=>S.db.collection("patients").doc(rid()).set({name, kana, facilityId:S.ptFac, active:true, createdBy:S.uid}), `${name} さんを追加しました`);
-    setTimeout(()=>$("#newPt")?.focus(),50);
+  if(ds.endpt){
+    const p=S.patients[ds.endpt];
+    const v=await formModal(`${p.name} さんを終了`, `<label class="f">終了日 *</label><input class="inp w" type="date" name="endDate" value="${ymd(new Date())}"><div class="muted" style="margin-top:10px">記録は残り、一覧からは外れます（「終了した患者」から戻せます）</div>`, "保存");
+    if(!v) return;
+    if(!v.endDate){ toast("終了日を入れてください"); return; }
+    await safeWrite(()=>S.db.collection("patients").doc(ds.endpt).update({ended:true, endType:"", endDate:v.endDate}), "契約終了にしました");
     return;
   }
-  if(ds.delpt){
-    const p=S.patients[ds.delpt];
-    const ok=await modal({title:`${p.name} さんを削除しますか？`, body:"これまでの報告記録は残ります。", ok:"削除", danger:true}); if(!ok) return;
-    await safeWrite(()=>S.db.collection("patients").doc(ds.delpt).update({active:false}), "削除しました");
+  if(ds.newpt){ editPatient(rid(), {isNew:true}); return; }
+  if(ds.showended){
+    // 画面を動かさず、患者名だけ入れ替える: 切替前の高さを保ってスクロール位置が縮まないようにする
+    const y = window.scrollY, app = $("#app");
+    app.style.minHeight = app.offsetHeight + "px";
+    S.showEnded=!S.showEnded; render();
+    window.scrollTo(0, y);
+    const release = ()=>{ app.style.minHeight = ""; };
+    window.addEventListener("touchstart", release, {once:true, passive:true});
+    window.addEventListener("wheel", release, {once:true, passive:true});
     return;
   }
+  if(ds.restorept){ await safeWrite(()=>S.db.collection("patients").doc(ds.restorept).update({ended:false, endType:"", endDate:""}), "契約中に戻しました"); return; }
   if(ds.delfac){ deleteFacility(ds.delfac); return; }
   // members
   if(ds.renamemem){
@@ -2326,7 +2340,6 @@ document.addEventListener("change", async e=>{
 document.addEventListener("input", e=>{ if(e.target.classList?.contains("plin")) savePl(e.target); });
 document.addEventListener("keydown", e=>{
   if(e.key!=="Enter") return;
-  if(e.target.id==="newPt"||e.target.id==="newPtKana") $("#addPt")?.click();
   if(e.target.id==="obName") $("#obGo")?.click();
 });
 window.addEventListener("beforeunload", e=>{ if(S.dirty){ e.preventDefault(); e.returnValue=""; } });

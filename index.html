@@ -72,6 +72,7 @@ main{max-width:980px;margin:0 auto;padding:16px 14px 110px}
 .reccard .rh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .reccard .rh b{font-size:16px}
 .phrases{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .phrases .chip.ph{min-height:0;padding:4px 10px;font-size:13px;font-weight:500}
 textarea.prev{color:#a3abbb}
 .ptrow{display:flex;gap:6px;align-items:center}.ptrow .chip{flex:1}
@@ -718,7 +719,7 @@ function patientsView(){
   const listHtml = S.showEnded
     ? (endedPts.length ? `<ul class="list">${endedPts.map(p=>`<li><div class="grow" style="min-width:0"><b>${esc(p.name)}</b> <span class="muted">${p.endDate?esc(wareki(p.endDate)):""}</span></div><button class="btn sm" data-restorept="${p.id}">契約中に戻す</button></li>`).join("")}</ul>` : `<div class="empty">過去患者はいません</div>`)
     : (pts.length ? `<ul class="list flat">${pts.map(p=>`<li style="gap:8px"><div class="grow" style="min-width:0"><b>${esc(p.name)}</b> ${p.kana?`<span class="muted">${esc(p.kana)}</span>`:""}</div>
-      <button class="btn sm ghost" data-mailpt="${p.id}">メール</button>
+      <button class="btn sm ghost" data-phonept="${p.id}">📞</button>
       <button class="btn sm" data-editpt="${p.id}">情報</button>
       <button class="btn sm ghost" data-endpt="${p.id}">終了</button>
       </li>`).join("")}</ul>`
@@ -1832,6 +1833,7 @@ async function editPatient(pid, opts={}){
   const curDocs = curCl ? clinicDoctors(curCl) : (p.consentDoctor ? [p.consentDoctor] : []);
   const consentDocOptions = `<option value="">（未選択）</option>` + curDocs.map(d=>`<option value="${esc(d)}" ${d===(p.consentDoctor||"")?"selected":""}>${esc(d)}</option>`).join("");
   const v = await formModal(isNew ? "新患登録" : `${p.name} さんの情報`, `
+    ${isNew?"":contactLinksHtml(p)}
     <div class="fgrid">
     <div><label class="f">姓 *</label><input class="inp w" name="sei" value="${esc(sei)}"></div>
     <div><label class="f">名 *</label><input class="inp w" name="mei" value="${esc(mei)}"></div>
@@ -1847,6 +1849,11 @@ async function editPatient(pid, opts={}){
     <div class="fgrid" style="margin-top:8px">
     <div><label class="f">自宅の電話</label>${inp("phoneHome","例：072-000-0000","tel")}</div>
     <div><label class="f">携帯電話</label>${inp("phoneMobile","例：090-0000-0000","tel")}</div>
+    </div>
+    <h4 class="fh">代理人（電話の連絡先）</h4><div class="fgrid">
+    <div><label class="f">代理人の氏名</label>${inp("dairiName")}</div>
+    <div><label class="f">続柄（例：奥様）</label>${inp("dairiRelation","例：奥様")}</div>
+    <div><label class="f">代理人の電話</label>${inp("dairiTel","例：090-0000-0000","tel")}</div>
     </div>
     <h4 class="fh">メール送信先（ケアマネ・家族）</h4><div class="fgrid">
     <div><label class="f">ケアマネ事業所名</label>${inp("careOffice")}</div>
@@ -1887,7 +1894,7 @@ async function editPatient(pid, opts={}){
   if(!v) return;
   v.sei = (v.sei||"").trim(); v.mei = (v.mei||"").trim();
   for(const k of ["kohiNo","insurerNo","kigo","bango"]) if(v[k]!==undefined) v[k] = toHalf(v[k]).replace(/\s/g,"");
-  for(const k of ["phoneHome","phoneMobile"]) if(v[k]!==undefined) v[k] = fmtPhone(v[k]);
+  for(const k of ["phoneHome","phoneMobile","dairiTel"]) if(v[k]!==undefined) v[k] = fmtPhone(v[k]);
   const kc = kohiCandidates(v.kohiNo);
   if(kc.length>1 && !v.kohiName){ toast("公費名称を選んでください（受給者証を見て選びます）"); return; }
   v.kohiName = kc.length===1 ? kc[0] : (kc.length>1 ? v.kohiName : "");
@@ -1913,26 +1920,36 @@ async function editPatient(pid, opts={}){
   await safeWrite(()=>S.db.collection("patients").doc(pid).set(doc), isNew ? `${v.name} さんを登録しました` : "保存しました");
 }
 
-/* ----- メール送信（宛先を開くだけ。送信はメールアプリで行う） ----- */
-async function mailPicker(pid){
+/* ----- 📞：本人・代理人・ケアマネの電話を並べる（押すと発信） ----- */
+async function phonePicker(pid){
   const p = S.patients[pid]; if(!p) return;
-  const fac = facList().find(f=>f.id===p.facilityId);
-  const cl = S.clinics?.[p.clinicId];
-  const rows = [
-    ["施設", fac?.name||"", fac?.email||""],
-    ["医療機関", cl?.name||"", cl?.email||""],
-    ["ケアマネ", [p.careOffice,p.careName].filter(Boolean).join(" "), p.careEmail||""],
-    ["家族", p.familyName||"", p.familyEmail||""],
-  ];
-  const html = rows.map(([label, who, addr])=>`<div class="card" style="margin:0 0 8px">
-      <b>${label}</b> <span class="muted">${esc(who)}</span>
-      ${addr
-        ? `<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><a class="btn sm pri" href="mailto:${esc(addr)}?subject=${encodeURIComponent("ご連絡")}">メールを書く</a><button type="button" class="btn sm ghost" data-copyaddr="${esc(addr)}">アドレスをコピー</button></div><div class="muted" style="font-size:12px;margin-top:4px">${esc(addr)}</div>`
-        : `<div class="muted" style="font-size:12px;margin-top:4px">メールアドレスが未登録です</div>`}
-    </div>`).join("");
-  await formModal(`${p.name} さんへメール`, html, "閉じる");
+  const t = (n, label="") => n ? `<a class="btn sm pri" href="${telHref(n)}">📞 ${label}${esc(n)}</a>` : "";
+  const row = (who, btns) => `<div class="card" style="margin:0 0 8px"><b>${who}</b>
+      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${btns.filter(Boolean).join("") || '<span class="muted" style="font-size:12px">未登録</span>'}</div></div>`;
+  const html = [
+    row("本人", [t(p.phoneHome,"自宅 "), t(p.phoneMobile,"携帯 ")]),
+    (p.dairiName || p.dairiTel) ? row(`代理：${esc([p.dairiRelation, p.dairiName].filter(Boolean).join(" "))}`, [t(p.dairiTel)]) : "",
+    (p.careTel || p.careOffice || p.careName) ? row(`ケアマネ ${esc([p.careOffice, p.careName].filter(Boolean).join(" "))}`, [t(p.careTel)]) : "",
+  ].join("");
+  await formModal(`${p.name} さんに電話`, html, "閉じる");
 }
 
+/* ----- 情報の画面：電話・メールのボタン（保存済みの番号・アドレスから作る） ----- */
+function contactLinksHtml(p){
+  const fac = facList().find(f=>f.id===p.facilityId);
+  const cl = S.clinics?.[p.clinicId];
+  const tel = (label, n) => n ? `<a class="btn sm" href="${telHref(n)}">📞 ${label}</a>` : "";
+  const mail = (label, a) => a ? `<a class="btn sm" href="mailto:${esc(a)}?subject=${encodeURIComponent("ご連絡")}">✉ ${label}</a>` : "";
+  const rows = [
+    [tel("自宅", p.phoneHome), tel("携帯", p.phoneMobile)],
+    [tel("代理人", p.dairiTel), tel("ケアマネ", p.careTel), mail("ケアマネ", p.careEmail)],
+    [mail("家族", p.familyEmail)],
+    [tel("施設", fac?.tel), mail("施設", fac?.email)],
+    [tel("医療機関", cl?.phone), mail("医療機関", cl?.email)],
+  ].map(r=>r.filter(Boolean)).filter(r=>r.length);
+  if(!rows.length) return "";
+  return `<div class="contactbox">${rows.map(r=>`<div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:6px">${r.join("")}</div>`).join("")}</div>`;
+}
 /* ----- 汎用フォームモーダル ----- */
 /* ふりがな：ひらがな・カタカナを半角カタカナにする（レセプト用） */
 const KANA_F2H = {"ヰ":"ｲ","ヱ":"ｴ","ヵ":"ｶ","ヶ":"ｹ","ヮ":"ﾜ","。": "｡", "「": "｢", "」": "｣", "、": "､", "・": "･", "ヲ": "ｦ", "ァ": "ｧ", "ィ": "ｨ", "ゥ": "ｩ", "ェ": "ｪ", "ォ": "ｫ", "ャ": "ｬ", "ュ": "ｭ", "ョ": "ｮ", "ッ": "ｯ", "ー": "ｰ", "ア": "ｱ", "イ": "ｲ", "ウ": "ｳ", "エ": "ｴ", "オ": "ｵ", "カ": "ｶ", "キ": "ｷ", "ク": "ｸ", "ケ": "ｹ", "コ": "ｺ", "サ": "ｻ", "シ": "ｼ", "ス": "ｽ", "セ": "ｾ", "ソ": "ｿ", "タ": "ﾀ", "チ": "ﾁ", "ツ": "ﾂ", "テ": "ﾃ", "ト": "ﾄ", "ナ": "ﾅ", "ニ": "ﾆ", "ヌ": "ﾇ", "ネ": "ﾈ", "ノ": "ﾉ", "ハ": "ﾊ", "ヒ": "ﾋ", "フ": "ﾌ", "ヘ": "ﾍ", "ホ": "ﾎ", "マ": "ﾏ", "ミ": "ﾐ", "ム": "ﾑ", "メ": "ﾒ", "モ": "ﾓ", "ヤ": "ﾔ", "ユ": "ﾕ", "ヨ": "ﾖ", "ラ": "ﾗ", "リ": "ﾘ", "ル": "ﾙ", "レ": "ﾚ", "ロ": "ﾛ", "ワ": "ﾜ", "ン": "ﾝ", "ヺ": "ｦﾞ", "ヴ": "ｳﾞ", "ガ": "ｶﾞ", "ギ": "ｷﾞ", "グ": "ｸﾞ", "ゲ": "ｹﾞ", "ゴ": "ｺﾞ", "ザ": "ｻﾞ", "ジ": "ｼﾞ", "ズ": "ｽﾞ", "ゼ": "ｾﾞ", "ゾ": "ｿﾞ", "ダ": "ﾀﾞ", "ヂ": "ﾁﾞ", "ヅ": "ﾂﾞ", "デ": "ﾃﾞ", "ド": "ﾄﾞ", "バ": "ﾊﾞ", "パ": "ﾊﾟ", "ビ": "ﾋﾞ", "ピ": "ﾋﾟ", "ブ": "ﾌﾞ", "プ": "ﾌﾟ", "ベ": "ﾍﾞ", "ペ": "ﾍﾟ", "ボ": "ﾎﾞ", "ポ": "ﾎﾟ", "ヷ": "ﾜﾞ"};
@@ -2329,8 +2346,7 @@ document.addEventListener("click", async e=>{
   if(ds.ptfac){ S.ptFac = S.ptFac===ds.ptfac ? null : ds.ptfac; render(); return; }
   if(ds.newfac){ editFacility(null, ds.newfac); return; }
   if(ds.editfac){ editFacility(ds.editfac); return; }
-  if(ds.mailpt){ mailPicker(ds.mailpt); return; }
-  if(ds.copyaddr){ navigator.clipboard?.writeText(ds.copyaddr).then(()=>toast("アドレスをコピーしました"), ()=>toast("コピーできませんでした")); return; }
+  if(ds.phonept){ phonePicker(ds.phonept); return; }
   if(ds.endpt){
     const p=S.patients[ds.endpt];
     const v=await formModal(`${p.name} さんを終了`, `<label class="f">終了日 *</label><input class="inp w" type="date" name="endDate" value="${ymd(new Date())}"><div class="muted" style="margin-top:10px">記録は残り、一覧からは外れます（「終了した患者」から戻せます）</div>`, "保存");

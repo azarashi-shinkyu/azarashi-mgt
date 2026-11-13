@@ -71,6 +71,8 @@ main{max-width:980px;margin:0 auto;padding:16px 14px 110px}
 .reccard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
 .reccard .rh{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
 .reccard .rh b{font-size:16px}
+.phrases{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.phrases .chip.ph{min-height:0;padding:4px 10px;font-size:13px;font-weight:500}
 textarea.prev{color:#a3abbb}
 .ptrow{display:flex;gap:6px;align-items:center}.ptrow .chip{flex:1}
 .cheer{position:fixed;inset:0;background:rgba(20,40,80,.28);display:flex;align-items:center;justify-content:center;z-index:9999;animation:cFade .25s ease}
@@ -82,9 +84,18 @@ textarea.prev{color:#a3abbb}
 @keyframes cFade{from{opacity:0}to{opacity:1}}
 .chips.vlist .chip{width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between}
 .chips.vlist .chip.add{justify-content:center}
-.faclist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.faclist li{border:1.5px solid var(--blue-m);border-radius:12px;padding:10px 12px;background:#fff}
-.faclist li.on{border-color:var(--blue);background:var(--blue-l);box-shadow:0 0 0 2px var(--blue-m)}
+.chips.vlist{gap:0}
+.chips.vlist .chip{border:none;border-radius:8px;background:transparent;color:var(--ink);min-height:38px;padding:6px 8px}
+.chips.vlist .chip.add{border:1.5px dashed var(--blue);color:var(--blue);background:var(--blue-l);justify-content:center}
+.chips.vlist .chip.on{background:var(--blue-l);color:var(--blue)}
+.chips.vlist .chip.pt.on{background:var(--blue-l);color:var(--blue)}
+.chips.vlist .chip.pt.on::after{content:"✓";font-weight:700;margin-left:auto}
+.chips.vlist .chip.on .cnt{background:var(--blue);color:#fff}
+.chips.vlist .ptrow{padding:0}
+.list.flat li{border-bottom:0;padding:4px 6px}
+.faclist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.faclist li{border:none;border-radius:8px;padding:4px 6px;background:transparent}
+.faclist li.on{background:var(--blue-l)}
 .faclist .fhead{display:grid;grid-template-columns:minmax(0,1fr) 64px 64px;align-items:center;gap:8px}
 .faclist .fname{all:unset;cursor:pointer;display:flex;align-items:center;min-width:0}
 .faclist .fname b{font-size:16px;color:var(--ink);overflow-wrap:anywhere}
@@ -547,14 +558,12 @@ function dailyView(){
     <h2><span class="n">1</span>施設を選ぶ</h2>
     <div class="chips vlist">
       ${facs.map(f=>`<button class="chip fac ${S.curFac===f.id?"on":""}" data-fac="${f.id}">${esc(f.name)}${selByFac[f.id]?.length?`<span class="cnt">${selByFac[f.id].length}</span>`:""}</button>`).join("")}
-      <button class="chip add" data-newfac="daily">＋ 施設を登録</button>
     </div>
   </section>
 
   <section class="card">
-    <h2><span class="n">2</span>${esc(facName(S.curFac))} の患者を選ぶ</h2><div class="muted" style="margin:-6px 0 10px">複数選択できます</div>
-    ${pts.length ? `<div class="chips vlist">${pts.map(p=>`<div class="ptrow"><button class="chip pt ${S.sel.has(p.id)?"on":""}" data-pt="${p.id}">${esc(p.name)}</button><button class="btn sm ghost" data-consent="${p.id}">同意書</button></div>`).join("")}</div>
-      <div class="row" style="margin-top:12px"><button class="btn sm ghost" data-allfac="${S.curFac}">この施設を全員選択</button><button class="btn sm ghost" data-clearfac="${S.curFac}">この施設の選択を外す</button></div>`
+    <h2><span class="n">2</span>${esc(facName(S.curFac))}</h2>
+    ${pts.length ? `<div class="row" style="margin:-2px 0 8px"><button class="btn sm ghost" data-allfac="${S.curFac}">全選択</button><button class="btn sm ghost" data-clearfac="${S.curFac}">全解除</button></div><div class="chips vlist">${pts.map(p=>`<div class="ptrow"><button class="chip pt ${S.sel.has(p.id)?"on":""}" data-pt="${p.id}">${esc(p.name)}</button><button class="btn sm ghost" data-consent="${p.id}">同意書</button></div>`).join("")}</div>`
       : `<div class="empty">この施設には患者が登録されていません。<br><button class="btn sm" style="margin-top:8px" data-goto-patients="${S.curFac}">患者を登録する</button></div>`}
   </section>
 
@@ -708,7 +717,8 @@ function patientsView(){
   const endedPts=Object.entries(S.patients).map(([id,p])=>({id,...p})).filter(p=>p.facilityId===S.ptFac && p.active!==false && p.ended);
   const listHtml = S.showEnded
     ? (endedPts.length ? `<ul class="list">${endedPts.map(p=>`<li><div class="grow" style="min-width:0"><b>${esc(p.name)}</b> <span class="muted">${p.endDate?esc(wareki(p.endDate)):""}</span></div><button class="btn sm" data-restorept="${p.id}">契約中に戻す</button></li>`).join("")}</ul>` : `<div class="empty">過去患者はいません</div>`)
-    : (pts.length ? `<ul class="list">${pts.map(p=>`<li style="gap:8px"><div class="grow" style="min-width:0"><b>${esc(p.name)}</b> ${p.kana?`<span class="muted">${esc(p.kana)}</span>`:""}</div>
+    : (pts.length ? `<ul class="list flat">${pts.map(p=>`<li style="gap:8px"><div class="grow" style="min-width:0"><b>${esc(p.name)}</b> ${p.kana?`<span class="muted">${esc(p.kana)}</span>`:""}</div>
+      <button class="btn sm ghost" data-mailpt="${p.id}">メール</button>
       <button class="btn sm" data-editpt="${p.id}">情報</button>
       <button class="btn sm ghost" data-endpt="${p.id}">終了</button>
       </li>`).join("")}</ul>`
@@ -743,7 +753,7 @@ function facRow(f){
     <div class="fdet">
     ${sub.length?`<button class="fsub" data-ptfac="${f.id}">${sub.map(x=>`<span class="muted">${x}</span>`).join("")}</button>`:""}
     ${acts.length?`<div class="facts">${acts.join("")}</div>`:""}
-    ${(f.contactTel||f.tel||f.email)?`<div class="facnum muted">${f.contactTel?`担当 ${esc(f.contactTel)}　`:""}${f.tel?`施設 ${esc(f.tel)}　`:""}${f.fax?`FAX ${esc(f.fax)}　`:""}${f.email?`✉ ${esc(f.email)}`:""}</div>`:""}
+    ${(f.contactTel||f.tel||f.email)?`<div class="facnum muted">${f.contactTel?`担当 ${esc(f.contactTel)}　`:""}${f.tel?`施設 ${esc(f.tel)}　`:""}${f.fax?`FAX ${esc(f.fax)}　`:""}${f.email?`<a href="mailto:${esc(f.email)}">✉ ${esc(f.email)}</a>`:""}</div>`:""}
     ${f.memo?`<div class="facnum muted">📝 ${esc(f.memo)}</div>`:""}
     </div>
   </li>`;
@@ -1150,6 +1160,8 @@ function showDoc(html, fname){
 
 /* ----- 施術録（施術ごとに記入し、必要時に印刷） ----- */
 const TREAT_JUTSU = ["1術（はり又はきゅう）","2術（はり・きゅうの併用）"];
+/* 経過の定型文（タップすると経過の欄に追加。内容は後から直せます） */
+const PROGRESS_PHRASES = ["肩こりが軽くなった","腰の痛みが軽くなった","可動域が広がった","だるさが軽い","睡眠がよくとれている","前回と変わらず","痛みが強くなった"];
 
 /* ----- 施術録の入力画面（報告の前に、選んだ患者ごとに記入） ----- */
 async function enterRecMode(){
@@ -1186,6 +1198,7 @@ function treatmentEntryView(){
       </div>
       <label class="f" style="margin-top:8px">症状ならびに経過 *</label>
       <textarea class="inp w ${c.progPrev?"prev":""}" data-f="progress" data-prog="${pid}" rows="4">${esc(c.progress)}</textarea>
+      <div class="phrases">${PROGRESS_PHRASES.map(t=>`<button type="button" class="chip ph" data-phrase="${esc(t)}" data-phrase-pid="${pid}">${esc(t)}</button>`).join("")}</div>
       <label class="f" style="margin-top:8px">備考</label>
       <input class="inp w" data-f="note" value="${esc(c.note)}">
       <div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn sm ghost" data-consent="${pid}">同意書</button><button class="btn sm" data-recsave="${pid}">保存</button><button class="btn sm pri" data-recprint="${pid}">保存して印刷</button></div>
@@ -1229,21 +1242,19 @@ function noticesHtml(){
   const list = Object.entries(S.notices||{}).map(([id,n])=>({id,...n}))
     .sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
   if(!list.length) return `<div class="card muted">お知らせはまだありません</div>`;
-  return list.map(n=>`<div class="card" style="${n.important?"border:2px solid #d35400;":""}">
-      <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
-        <b style="font-size:15px">${n.important?'<span class="badge" style="background:#d35400;color:#fff">重要</span> ':""}${esc(n.title||"")}</b>
-        <span class="muted" style="font-size:12px">${esc(String(n.createdAt||"").slice(0,10))}</span></div>
-      ${n.body?`<div style="margin-top:8px;white-space:pre-wrap;line-height:1.7">${esc(n.body)}</div>`:""}
-      ${isAdmin()?`<div class="row" style="justify-content:flex-end;margin-top:8px"><button class="btn sm ghost danger" data-delnotice="${n.id}">削除</button></div>`:""}
-    </div>`).join("");
+  return `<div class="card"><ul class="list flat">${list.map(n=>`<li style="align-items:flex-start">
+      <div class="grow" style="min-width:0"><b style="font-size:15px">${n.important?'<span class="badge" style="background:#d35400;color:#fff">重要</span> ':""}${esc(n.title||"")}</b>${n.body?`<div class="muted" style="font-size:13px;margin-top:2px;white-space:pre-wrap;line-height:1.6">${esc(n.body)}</div>`:""}</div>
+      <span class="muted" style="font-size:12px;white-space:nowrap">${esc(String(n.createdAt||"").slice(0,10))}</span>
+      ${isAdmin()?`<button class="btn sm ghost danger" data-delnotice="${n.id}">削除</button>`:""}
+    </li>`).join("")}</ul></div>`;
 }
 function newsView(){
   const alerts = consentAlertsHtml();
-  return `${renewalWaitingHtml()}<h3 style="margin:4px 0 8px">同意書の期限通知</h3>
-    ${alerts || '<div class="card muted">期限が近い同意書はありません</div>'}
-    <div class="row" style="justify-content:space-between;align-items:center;margin:16px 0 8px">
+  return `<div class="row" style="justify-content:space-between;align-items:center;margin:4px 0 8px">
       <h3 style="margin:0">本部からのお知らせ</h3>${isAdmin()?'<button class="btn sm pri" data-newnotice="1">お知らせを書く</button>':""}</div>
-    ${noticesHtml()}`;
+    ${noticesHtml()}
+    ${renewalWaitingHtml()}<h3 style="margin:16px 0 8px">同意書の期限通知</h3>
+    ${alerts || '<div class="card muted">期限が近い同意書はありません</div>'}`;
 }
 async function openNoticeForm(){
   const v = await formModal("お知らせを書く", `
@@ -1296,6 +1307,7 @@ function clinicsView(){
       <b>${esc(c.name)}</b>
       <div class="muted" style="font-size:13px;margin-top:4px">${esc(c.address||"")}${c.phone?"　TEL "+esc(c.phone):""}</div>
       <div style="font-size:13px;margin-top:2px">保険医：${esc(clinicDoctors(c).join("、")||"（未入力）")}</div>
+      ${c.email?`<div style="font-size:13px;margin-top:2px"><a href="mailto:${esc(c.email)}">✉ ${esc(c.email)}</a></div>`:""}
       ${isAdmin()?`<div class="row" style="justify-content:flex-end;gap:6px;margin-top:6px"><button class="btn sm ghost" data-editclinic="${c.id}">編集</button><button class="btn sm danger" data-delclinic="${c.id}">削除</button></div>`:""}
     </div>`).join("") : '<div class="empty">医療機関は未登録です</div>'}`;
 }
@@ -1307,6 +1319,7 @@ async function editClinic(id){
     <label class="f">医療機関名 *</label><input class="inp w" name="name" value="${esc(c.name||"")}">
     <label class="f">所在地</label><input class="inp w" name="address" value="${esc(c.address||"")}">
     <label class="f">電話番号</label><input class="inp w" name="phone" value="${esc(c.phone||"")}" inputmode="tel">
+    <label class="f">メールアドレス</label><input class="inp w" name="email" type="email" value="${esc(c.email||"")}" placeholder="例：info@example.com">
     <label class="f">保険医の氏名（同意書に印字・複数いる場合は1人ずつ改行）</label><textarea class="inp w" name="doctorNames" rows="3">${esc(clinicDoctors(c).join("\n"))}</textarea>`, "保存");
   if(!v) return;
   if(!v.name){ toast("医療機関名を入力してください"); return; }
@@ -1358,7 +1371,7 @@ function renewalWaitingHtml(){
   if(!items.length) return "";
   return `<h3 style="margin:4px 0 8px">同意書の原本回収待ち（${items.length}名）</h3>
     <section class="card" style="padding:10px 12px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px">
-    ${items.map(({id,p,r})=>`<div style="border:1px solid #e3e8f2;border-radius:8px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+    ${items.map(({id,p,r})=>`<div style="border:none;border-radius:8px;padding:4px 6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="min-width:0"><div style="font-size:14px"><b>${esc(p.name)}</b> <span class="muted" style="font-size:11px">${esc(facName(p.facilityId))}</span> <span class="badge info">更新されました</span></div>
       <div style="font-size:12px;margin-top:2px">有効期限　${esc(wareki(r.expiry))}　<span class="muted">${esc(r.byName||"")}</span></div></div>
       <div style="display:flex;gap:6px;flex:none"><button class="btn sm ghost" style="padding:2px 8px;font-size:12px" data-scan="${id}">写真</button><button class="btn sm pri" style="padding:2px 8px;font-size:12px" data-origdone="${id}">原本回収済</button></div></div>`).join("")}
@@ -1390,7 +1403,7 @@ function consentAlertsHtml(){
   const col = {expired:"#c0392b", "1m":"#c0392b", "2m":"#b7950b"};
   return `<section class="card" style="padding:10px 12px">
     <div style="display:grid;grid-template-columns:1fr;gap:6px">
-    ${items.map(({id,p,a})=>`<div style="border:1px solid #e3e8f2;border-radius:8px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+    ${items.map(({id,p,a})=>`<div style="border:none;border-radius:8px;padding:4px 6px;display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="min-width:0">
         <div style="font-size:14px;line-height:1.3"><b>${esc(p.name)}</b> <span class="muted" style="font-size:11px">${esc(facName(p.facilityId))}</span></div>
         <div style="color:${col[a.lv]};font-weight:700;font-size:12px;margin-top:2px">有効期限　${esc(wareki(ymd(a.e)))}</div>
@@ -1835,6 +1848,14 @@ async function editPatient(pid, opts={}){
     <div><label class="f">自宅の電話</label>${inp("phoneHome","例：072-000-0000","tel")}</div>
     <div><label class="f">携帯電話</label>${inp("phoneMobile","例：090-0000-0000","tel")}</div>
     </div>
+    <h4 class="fh">メール送信先（ケアマネ・家族）</h4><div class="fgrid">
+    <div><label class="f">ケアマネ事業所名</label>${inp("careOffice")}</div>
+    <div><label class="f">ケアマネ氏名</label>${inp("careName")}</div>
+    <div><label class="f">ケアマネ電話</label>${inp("careTel","例：06-0000-0000","tel","tel")}</div>
+    <div><label class="f">ケアマネメール</label>${inp("careEmail","例：care@example.com","email","email")}</div>
+    <div><label class="f">家族の氏名</label>${inp("familyName")}</div>
+    <div><label class="f">家族のメール</label>${inp("familyEmail","例：family@example.com","email","email")}</div>
+    </div>
     <h4 class="fh">保険証</h4><div class="fgrid">
     <div><label class="f">公費番号</label><input class="inp w" name="kohiNo" value="${esc(p.kohiNo||"")}" placeholder="例：12345678"></div>
     <div><label class="f">公費名称</label><div id="kohiCell">${kohiInner(p.kohiNo, p.kohiName)}</div></div>
@@ -1890,6 +1911,26 @@ async function editPatient(pid, opts={}){
   v.clinicId = clinicHit ? clinicHit[0] : "";
   const doc = {...p, ...v, denryo:!!v.denryo, tokubetsu:!!v.tokubetsu, updatedBy:S.uid, updatedAt:new Date().toISOString(), ...(isNew?{createdBy:S.uid, active:true}:{})};
   await safeWrite(()=>S.db.collection("patients").doc(pid).set(doc), isNew ? `${v.name} さんを登録しました` : "保存しました");
+}
+
+/* ----- メール送信（宛先を開くだけ。送信はメールアプリで行う） ----- */
+async function mailPicker(pid){
+  const p = S.patients[pid]; if(!p) return;
+  const fac = facList().find(f=>f.id===p.facilityId);
+  const cl = S.clinics?.[p.clinicId];
+  const rows = [
+    ["施設", fac?.name||"", fac?.email||""],
+    ["医療機関", cl?.name||"", cl?.email||""],
+    ["ケアマネ", [p.careOffice,p.careName].filter(Boolean).join(" "), p.careEmail||""],
+    ["家族", p.familyName||"", p.familyEmail||""],
+  ];
+  const html = rows.map(([label, who, addr])=>`<div class="card" style="margin:0 0 8px">
+      <b>${label}</b> <span class="muted">${esc(who)}</span>
+      ${addr
+        ? `<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><a class="btn sm pri" href="mailto:${esc(addr)}?subject=${encodeURIComponent("ご連絡")}">メールを書く</a><button type="button" class="btn sm ghost" data-copyaddr="${esc(addr)}">アドレスをコピー</button></div><div class="muted" style="font-size:12px;margin-top:4px">${esc(addr)}</div>`
+        : `<div class="muted" style="font-size:12px;margin-top:4px">メールアドレスが未登録です</div>`}
+    </div>`).join("");
+  await formModal(`${p.name} さんへメール`, html, "閉じる");
 }
 
 /* ----- 汎用フォームモーダル ----- */
@@ -2248,6 +2289,11 @@ document.addEventListener("click", async e=>{
   if(ds.receive){ receiveStaff(ds.receive); return; }
   if(ds.recenter){ enterRecMode(); return; }
   if(ds.recback){ S.recMode=false; render(); window.scrollTo(0,0); return; }
+  if(ds.phrase){
+    const ta=document.querySelector(`[data-card="${ds.phrasePid}"] [data-f="progress"]`);
+    if(ta){ const old = ta.classList.contains("prev") ? "" : ta.value.trim(); ta.value = old ? old.replace(/\s*$/,"") + "、" + ds.phrase : ds.phrase; ta.classList.remove("prev"); ta.focus(); }
+    return;
+  }
   if(ds.recsave){ saveRecCard(ds.recsave,false); return; }
   if(ds.recprint){ saveRecCard(ds.recprint,true); return; }
   if(ds.recprintall){ printAllRec(); return; }
@@ -2283,6 +2329,8 @@ document.addEventListener("click", async e=>{
   if(ds.ptfac){ S.ptFac = S.ptFac===ds.ptfac ? null : ds.ptfac; render(); return; }
   if(ds.newfac){ editFacility(null, ds.newfac); return; }
   if(ds.editfac){ editFacility(ds.editfac); return; }
+  if(ds.mailpt){ mailPicker(ds.mailpt); return; }
+  if(ds.copyaddr){ navigator.clipboard?.writeText(ds.copyaddr).then(()=>toast("アドレスをコピーしました"), ()=>toast("コピーできませんでした")); return; }
   if(ds.endpt){
     const p=S.patients[ds.endpt];
     const v=await formModal(`${p.name} さんを終了`, `<label class="f">終了日 *</label><input class="inp w" type="date" name="endDate" value="${ymd(new Date())}"><div class="muted" style="margin-top:10px">記録は残り、一覧からは外れます（「終了した患者」から戻せます）</div>`, "保存");

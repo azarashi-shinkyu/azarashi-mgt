@@ -188,7 +188,7 @@ label.ck input{width:18px;height:18px}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 .fh{margin:18px 0 0;font-size:13px;color:var(--blue-d);border-top:1px solid var(--line);padding-top:12px}
 @media (max-width:560px){.fgrid{grid-template-columns:1fr}}
-@media (max-width:560px){.hdr h1{font-size:17px}.datebar .d{font-size:19px}}
+@media (max-width:560px){.hdr h1{font-size:17px}.datebar .d{font-size:19px}.tabs{flex-wrap:wrap;overflow-x:visible;row-gap:0}.tabs button{padding:10px 8px 8px}}
 </style>
 </head>
 <body>
@@ -430,15 +430,17 @@ function render(){
   startAdminData();
 
   const tabs = isAdmin()
-    ? [["collect","報告回収"],["news","お知らせ"],["month","月間確認"],["receipt","レセプト"],["pl","売上・PL"],["sales","営業"],["patients","施設・患者"],["settings","設定"]]
-    : [["news","お知らせ"],["daily","日報"],["month","月間確認"],["patients","施設・患者"]];
+    ? [["collect","報告回収"],["news","お知らせ"],["month","月間確認"],["receipt","レセプト"],["pl","売上・PL"],["sales","営業"],["patients","施設・患者"],["memo","メモ"],["settings","設定"]]
+    : [["news","お知らせ"],["daily","日報"],["month","月間確認"],["patients","施設・患者"],["memo","メモ"]];
   if(!S.tab || !tabs.some(t=>t[0]===S.tab)) S.tab = tabs[0][0];
   if(S.tab==="daily" && S._dayKey !== S.date){ S._dayKey=S.date; loadDay(); }
   if(["month","reports","collect","receipt","pl","sales"].includes(S.tab)) subscribeMonth();
+  if(S.tab==="memo") subscribeMemos();
 
   let body="";
   if(S.tab==="daily") body = S.recMode ? treatmentEntryView() : dailyView();
   else if(S.tab==="month") body = monthView();
+  else if(S.tab==="memo") body = memoView();
   else if(S.tab==="reports") body = reportsView();
   else if(S.tab==="patients") body = patientsView();
   else if(S.tab==="news") body = newsView();
@@ -544,15 +546,14 @@ function dailyView(){
 
   return `
   <section class="card">
-    <div class="row" style="justify-content:space-between">
+    <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:6px">
       <div class="datebar">
         <button class="btn sm ghost" data-day="-1" aria-label="前の日">◀</button>
-        <div><span class="d">${d.getMonth()+1}月${d.getDate()}日</span> <span class="w">(${WD[d.getDay()]})</span></div>
+        <div style="display:flex;align-items:center;gap:4px;white-space:nowrap"><span class="d">${d.getMonth()+1}月${d.getDate()}日</span><span class="w" style="line-height:1">(${WD[d.getDay()]})</span></div>
         <button class="btn sm ghost" data-day="1" aria-label="次の日" ${S.date>=today?"disabled":""}>▶</button>
       </div>
-      <div>${status}</div>
+      <div class="row" style="gap:6px;flex-wrap:nowrap;align-items:center">${S.date!==today?`<button class="btn sm" data-day="today" style="padding:6px 8px;white-space:nowrap">今日に戻る</button>`:""}<div style="white-space:nowrap">${status}</div></div>
     </div>
-    ${S.date!==today?`<div class="row" style="margin-top:8px"><span class="muted">過去の日付を表示中</span><button class="btn sm" data-day="today">今日に戻る</button></div>`:""}
   </section>
 
   <section class="card">
@@ -1159,6 +1160,55 @@ function showDoc(html, fname){
     bg.remove(); });
 }
 
+/* ----- メモ（施術者が自由に書く。自分のメモだけ見える） ----- */
+function subscribeMemos(){
+  if(S._memoUid===S.uid) return;
+  S._memoUid = S.uid;
+  track(S.db.collection("memos").where("createdBy","==",S.uid).onSnapshot(snap=>{
+    const o={}; snap.docs.forEach(d=>{ o[d.id]=d.data(); }); S.memos=o; if(S.tab==="memo") render();
+  }, e=>console.error(e)));
+}
+function memoView(){
+  const list = Object.entries(S.memos||{}).map(([id,m])=>({id,...m}))
+    .sort((a,b)=>String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
+  return `<section class="card">
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="margin:0">メモ</h2><button class="btn sm pri" data-newmemo="1">＋ メモを書く</button></div>
+    <div class="muted" style="font-size:12px;margin-bottom:8px">自分だけが見られるメモです。押すと書き直せます。</div>
+    ${list.length ? `<ul class="list flat">${list.map(m=>{
+        const fac = m.facilityId ? facName(m.facilityId) : "";
+        const pt = (m.patientId && S.patients[m.patientId]) ? S.patients[m.patientId].name : "";
+        const meta = [fac && `施設：${fac}`, pt && `患者：${pt}`].filter(Boolean).join("　");
+        return `<li style="align-items:flex-start">
+        <button type="button" data-editmemo="${m.id}" style="all:unset;cursor:pointer;flex:1;min-width:0">${meta?`<div style="font-size:12px;font-weight:700;color:var(--blue-d);margin-bottom:2px">${esc(meta)}</div>`:""}<div style="white-space:pre-wrap;line-height:1.6;font-size:14px">${esc(m.text||"")}</div><div class="muted" style="font-size:11px;margin-top:2px">${esc(String(m.updatedAt||"").slice(0,16).replace("T"," "))}</div></button>
+        <button class="btn sm ghost danger" data-delmemo="${m.id}">削除</button>
+      </li>`;}).join("")}</ul>` : `<div class="empty">メモはまだありません</div>`}
+  </section>`;
+}
+/* メモの患者欄：選んだ施設に契約中の患者だけを出す */
+function memoPtOptions(facId, curPid){
+  if(!facId) return `<option value="">（先に施設を選んでください）</option>`;
+  const pts = Object.entries(S.patients||{}).filter(([,p])=>isContracted(p) && p.facilityId===facId)
+    .sort((a,b)=>(a[1].kana||a[1].name).localeCompare(b[1].kana||b[1].name,"ja"));
+  return `<option value="">（なし）</option>` + pts.map(([pid,p])=>`<option value="${esc(pid)}" ${pid===curPid?"selected":""}>${esc(p.name)}</option>`).join("");
+}
+async function openMemoForm(id){
+  const m = id ? (S.memos||{})[id] : null;
+  const curFac = m ? (m.facilityId || (m.patientId && S.patients[m.patientId]?.facilityId) || "") : "";
+  const facOpts = `<option value="">（なし）</option>` + facList().map(f=>`<option value="${esc(f.id)}" ${f.id===curFac?"selected":""}>${esc(f.name)}</option>`).join("");
+  const v = await formModal(id ? "メモを書き直す" : "メモを書く", `
+    <label class="f">施設</label><select class="inp w" name="facilityId">${facOpts}</select>
+    <label class="f" style="margin-top:8px">患者（契約中のみ）</label><select class="inp w" name="patientId">${memoPtOptions(curFac, m?.patientId||"")}</select>
+    <label class="f" style="margin-top:8px">メモ</label><textarea class="inp w" name="text" rows="8" placeholder="自由に書いてください">${esc(m?.text||"")}</textarea>`, "保存");
+  if(!v) return;
+  const text = (v.text||"").trim(); if(!text){ toast("メモを入力してください"); return; }
+  const facilityId = v.facilityId || "";
+  const patientId = facilityId ? (v.patientId || "") : "";
+  const now = new Date().toISOString();
+  const data = {text, facilityId, patientId, updatedAt:now};
+  if(id) await safeWrite(()=>S.db.collection("memos").doc(id).update(data), "保存しました");
+  else await safeWrite(()=>S.db.collection("memos").doc(rid()).set({...data, createdBy:S.uid, createdAt:now}), "保存しました");
+}
+
 /* ----- 施術録（施術ごとに記入し、必要時に印刷） ----- */
 const TREAT_JUTSU = ["1術（はり又はきゅう）","2術（はり・きゅうの併用）"];
 /* 経過の定型文（タップすると経過の欄に追加。内容は後から直せます） */
@@ -1499,6 +1549,7 @@ function consentHtml(p, c){
 </body></html>`;
 }
 document.addEventListener("input", e=>{ if(e.target.matches && e.target.matches("textarea.prev")) e.target.classList.remove("prev"); });
+document.addEventListener("change", e=>{ if(e.target.name!=="facilityId") return; const f=e.target.closest("form"); const sel=f?.querySelector('select[name="patientId"]'); if(sel) sel.innerHTML = memoPtOptions(e.target.value, ""); });
 function printTreatmentRecords(list){
   const pages = list.map(({p, rec, date})=>{
     const d = parseYmd(date);
@@ -2347,6 +2398,9 @@ document.addEventListener("click", async e=>{
   if(ds.newfac){ editFacility(null, ds.newfac); return; }
   if(ds.editfac){ editFacility(ds.editfac); return; }
   if(ds.phonept){ phonePicker(ds.phonept); return; }
+  if(ds.newmemo){ openMemoForm(null); return; }
+  if(ds.editmemo){ openMemoForm(ds.editmemo); return; }
+  if(ds.delmemo){ const ok=await modal({title:"このメモを削除しますか？", body:"削除すると元に戻せません。", ok:"削除する"}); if(ok) await safeWrite(()=>S.db.collection("memos").doc(ds.delmemo).delete(), "削除しました"); return; }
   if(ds.endpt){
     const p=S.patients[ds.endpt];
     const v=await formModal(`${p.name} さんを終了`, `<label class="f">終了日 *</label><input class="inp w" type="date" name="endDate" value="${ymd(new Date())}"><div class="muted" style="margin-top:10px">記録は残り、一覧からは外れます（「終了した患者」から戻せます）</div>`, "保存");

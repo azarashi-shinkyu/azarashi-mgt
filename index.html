@@ -438,7 +438,7 @@ function render(){
   const tabs = isAdmin()
     ? [["collect","報告回収"],["news","お知らせ"],["month","月間確認"],["receipt","レセプト"],["pl","売上・PL"],["sales","営業"],["patients","施設・患者"],["memo","メモ"],["settings","設定"]]
     : [["news","お知らせ"],["daily","日報"],["month","月間確認"],["patients","施設・患者"],["memo","メモ"]];
-  if(storeScoped()){ const rest=tabs.filter(t=>!["news","collect","receipt","sales"].includes(t[0])).map(t=>t[0]==="pl"?["pl","売上"]:t); tabs.length=0; tabs.push(["daily","日報"],["news","お知らせ"],["collect","報告回収"],...rest); }
+  if(storeScoped()){ const rest=tabs.filter(t=>!["news","collect","receipt","sales"].includes(t[0])).map(t=>t[0]==="pl"?["pl","売上"]:t); tabs.length=0; tabs.push(["news","お知らせ"],["daily","日報"],["collect","報告回収"],...rest); }
   if(isSalesId(S.uid) && !S.isOwner){ const i=tabs.findIndex(t=>t[0]==="sales"); if(i>0) tabs.unshift(tabs.splice(i,1)[0]); }
   if(!S.tab || !tabs.some(t=>t[0]===S.tab)) S.tab = tabs[0][0];
   if(S.tab==="daily" && S._dayKey !== S.date){ S._dayKey=S.date; loadDay(); }

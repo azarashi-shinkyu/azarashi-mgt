@@ -1173,12 +1173,11 @@ function memoView(){
     .sort((a,b)=>String(b.updatedAt||"").localeCompare(String(a.updatedAt||"")));
   return `<section class="card">
     <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="margin:0">メモ</h2><button class="btn sm pri" data-newmemo="1">＋ メモを書く</button></div>
-    <div class="muted" style="font-size:12px;margin-bottom:8px">自分だけが見られるメモです。押すと書き直せます。</div>
     ${list.length ? `<ul class="list flat">${list.map(m=>{
         const fac = m.facilityId ? facName(m.facilityId) : "";
         const pt = (m.patientId && S.patients[m.patientId]) ? S.patients[m.patientId].name : "";
         const meta = [fac && `施設：${fac}`, pt && `患者：${pt}`].filter(Boolean).join("　");
-        return `<li style="align-items:flex-start">
+        return `<li style="align-items:flex-start;border-bottom:1px solid #e3e6ea">
         <button type="button" data-editmemo="${m.id}" style="all:unset;cursor:pointer;flex:1;min-width:0">${meta?`<div style="font-size:12px;font-weight:700;color:var(--blue-d);margin-bottom:2px">${esc(meta)}</div>`:""}<div style="white-space:pre-wrap;line-height:1.6;font-size:14px">${esc(m.text||"")}</div><div class="muted" style="font-size:11px;margin-top:2px">${esc(String(m.updatedAt||"").slice(0,16).replace("T"," "))}</div></button>
         <button class="btn sm ghost danger" data-delmemo="${m.id}">削除</button>
       </li>`;}).join("")}</ul>` : `<div class="empty">メモはまだありません</div>`}
